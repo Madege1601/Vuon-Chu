@@ -271,6 +271,7 @@ function renderRail(){
 function renderUser(){
   var s=$('#userSlot');
   if(!S.user){s.innerHTML='<button class="btn sm" id="loginBtn">Đăng nhập</button>';return}
+  var avHtml = S.user.avatar ? '<img src="'+esc(S.user.avatar)+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover">' : '<span class="av" style="width:26px;height:26px;font-size:12px;background:var(--accent);color:var(--accent-ink)">'+esc(S.user.name.charAt(0).toUpperCase())+'</span>';
   s.innerHTML='<button class="iconbtn" id="userBtn" aria-label="Tài khoản"><span class="av" style="width:26px;height:26px;font-size:12px;background:var(--accent);color:var(--accent-ink)">'+esc(S.user.name.charAt(0).toUpperCase())+'</span></button>'+
    '<div class="pop" id="userPop" hidden><div class="nitem"><b>'+esc(S.user.name)+'</b><br><span class="note">@'+esc(S.user.username)+'</span></div>'+
    '<button class="item" data-act="profile">Hồ sơ cá nhân</button><button class="item" data-go="manage">Quản lý truyện</button><button class="item" data-act="logout">Đăng xuất</button></div>';
@@ -298,6 +299,44 @@ function section(sec,title,desc){
   return '<div class="page-head"><h1 style="font-size:30px">'+title+'</h1><button class="btn ghost sm" data-edit="new">＋ Truyện mới</button></div><p style="color:var(--muted);margin:6px 0 20px">'+desc+'</p>'+
     gridOf(newest(STORIES.filter(function(s){return s.sec===sec})),'Chưa có truyện nào ở mục này.');
 }
+V.profile=function(){
+  if(!S.user) return '<div class="panel" style="text-align:center;padding:32px 16px"><h2>Bạn chưa đăng nhập</h2><p style="color:var(--muted);margin:8px 0 16px">Hãy đăng nhập hoặc tạo tài khoản để tùy chỉnh hồ sơ cá nhân.</p><button class="btn" id="loginBtn">Đăng nhập ngay</button></div>';
+
+  var user = S.user;
+  var avBig = user.avatar ? '<img src="'+esc(user.avatar)+'" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--line)">' : '<div class="av" style="width:72px;height:72px;font-size:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700">'+esc(user.name.charAt(0).toUpperCase())+'</div>';
+
+  /* Danh sách lịch sử đọc */
+  var histList = store('vc_history') || [];
+  var histHtml = '';
+  if(histList.length){
+    histHtml = histList.map(function(h){
+      var st = byId(h.id);
+      if(!st) return '';
+      var chName = (st.ch[h.ch] && st.ch[h.ch].t) ? st.ch[h.ch].t : ('Chương ' + (h.ch + 1));
+      return '<div class="mrow"><div class="mt"><b>'+esc(st.title)+'</b><span class="note">Đã đọc đến: '+esc(chName)+' · '+fmtDate(h.time)+'</span></div>'+
+        '<div class="row"><button class="btn ghost sm" data-go="read" data-arg="'+esc(st.id)+'" data-ch="'+h.ch+'">Đọc tiếp</button></div></div>';
+    }).join('');
+  } else {
+    histHtml = '<p class="note">Bạn chưa đọc bộ truyện nào gần đây.</p>';
+  }
+
+  /* Truyện theo dõi */
+  var followedStories = STORIES.filter(function(s){ return S.follows[s.id] !== undefined; });
+  var followHtml = followedStories.length ? gridOf(followedStories, '') : '<p class="note">Bạn chưa theo dõi bộ truyện nào.</p>';
+
+  return '<div class="page-head"><h1 style="font-size:30px">Hồ Sơ Cá Nhân</h1></div>'+
+   '<div class="panel" style="margin-bottom:24px"><form id="profileForm" style="display:grid;gap:14px;max-width:520px">'+
+   '<div class="row" style="gap:16px;align-items:center">'+avBig+'<div><b style="font-size:18px">'+esc(user.name)+'</b><br><span class="note">Tài khoản: @'+esc(user.username)+'</span></div></div>'+
+   '<div class="field"><label for="pName">Tên hiển thị</label><input type="text" id="pName" value="'+esc(user.name)+'" required maxlength="30"></div>'+
+   '<div class="field"><label for="pAv">Link ảnh Avatar (URL)</label><input type="text" id="pAv" value="'+esc(user.avatar||'')+'" placeholder="https://domain.com/anh.jpg"><span class="note">Dán link ảnh online (Imgur, Facebook, Pinterest...). Để trống nếu muốn dùng ký tự tên.</span></div>'+
+   '<div><button type="submit" class="btn">Lưu thay đổi</button></div></form></div>'+
+
+   '<div class="sec-title"><h2>Lịch sử đọc gần đây</h2><button class="btn ghost sm" data-act="clearhistory">Xóa lịch sử</button></div>'+
+   histHtml +
+
+   '<div class="sec-title" style="margin-top:32px"><h2>Truyện đang theo dõi ('+followedStories.length+')</h2><button data-go="tu-truyen">Xem tủ truyện</button></div>'+
+   followHtml;
+};  
 V.dai=function(){return section('dai','Vườn Truyện Dài','Những bộ truyện nhiều chương, đọc dần qua từng buổi tối.')};
 V.ngan=function(){return section('ngan','Vườn Truyện Ngắn','Truyện đọc trong vài phút.')};
 
@@ -392,6 +431,12 @@ function go(route,arg,ch){
     var s0=byId(arg);
     if(!s0.ch.length){toast('Truyện này chưa có chương nào');route='story';ch=0}
     else{ch=Math.min(Math.max(ch||0,0),s0.ch.length-1);var P=store('vc_prog')||{};P[arg]=ch;store('vc_prog',P)}
+  /* LƯU LỊCH SỬ ĐỌC GẦN ĐÂY */
+      var hist=store('vc_history')||[];
+      hist=hist.filter(function(h){return h.id!==arg});
+      hist.unshift({id:arg, ch:ch, time:Date.now()});
+      store('vc_history', hist.slice(0, 20)); // Lưu tối đa 20 bộ gần nhất
+    }
   }
   if(route!=='manage')S.delArm=null;
   S.route=route;S.arg=arg||null;S.ch=ch||0;
@@ -529,7 +574,16 @@ document.addEventListener('click',function(e){
   if(d.act==='mute'){S.muted=!S.muted;renderBell();$('#bellPop').hidden=false;toast(S.muted?'Đã tắt tiếng thông báo':'Đã bật tiếng thông báo');return}
   if(d.act==='readall'){S.noti.forEach(function(n){n.un=false});renderBell();$('#bellPop').hidden=false;return}
   if(d.act==='logout'){S.user=null;unstore('vc_user');renderUser();toast('Đã đăng xuất');return}
-  if(d.act==='profile'){toast('Mục này chưa có');return}
+  if(d.act==='clearhistory'){
+    unstore('vc_history');
+    toast('Đã xóa lịch sử đọc');
+    go('profile');
+    return;
+  }
+  if(d.act==='profile'){
+    go('profile');
+    return;
+  }
   if(d.act==='apply'){toast(S.user?'Đã ghi nhận đăng ký của bạn':'Hãy đăng nhập để đăng ký vị trí');return}
   if(d.act==='export'){downloadJSON();return}
   if(d.act==='copyjson'){
@@ -603,6 +657,28 @@ document.addEventListener('submit',function(e){
     S.user={username:u,name:users[u].name};store('vc_user',S.user);
     closeAll();renderUser();toast('Xin chào, '+S.user.name);if(S.route==='home')go('home');
   }
+  if(f.id==='profileForm'){
+    var newName = $('#pName').value.trim();
+    var newAv = $('#pAv').value.trim();
+    if(newName && S.user){
+      S.user.name = newName;
+      S.user.avatar = newAv;
+      store('vc_user', S.user);
+      
+      // Cập nhật lại danh sách người dùng trên máy
+      var users = store('vc_users') || {};
+      if(users[S.user.username]){
+        users[S.user.username].name = newName;
+        users[S.user.username].avatar = newAv;
+        store('vc_users', users);
+      }
+      
+      renderUser();
+      toast('Đã cập nhật hồ sơ cá nhân');
+      go('profile');
+    }
+    return;
+  }
 });
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeAll();closePops();closeDrawer()}});
 
@@ -616,7 +692,7 @@ try{
     BASE=clean(d);
     if(!hasLocal()){
       STORIES=clone(BASE);
-      if(['home','dai','ngan','rank','manage'].indexOf(S.route)>-1)go(S.route);
+      if(['home','dai','ngan','rank','manage','profile'].indexOf(S.route)>-1)go(S.route);
     }
   }).catch(function(){});
 }catch(e){}
