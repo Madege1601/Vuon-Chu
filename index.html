@@ -215,7 +215,7 @@ var STORIES=hasLocal()?clean(store('vc_stories')):[];
 function saveStories(){store('vc_stories',STORIES)}
 function byId(id){return STORIES.filter(function(s){return s.id===id})[0]}
 
-/* Tách nội dung thành chương: dòng bắt đầu bằng "Chương" hoặc "Trọn truyện" mở chương mới; mỗi dòng còn lại là một đoạn văn */
+/* Tách nội dung thành chương: dòng bắt đầu bằng "Chương" hoặc "Chọn truyện" mở chương mới; mỗi dòng còn lại là một đoạn văn */
 var HEAD=/^(chương|trọn truyện)/i;
 function parseChapters(raw,sec){
   var chs=[],cur=null;
@@ -257,7 +257,7 @@ var CREDITS=[['Người sáng lập','Tên thành viên'],['Thiết kế & lập
 var S={route:'home',arg:null,ch:0,user:store('vc_user'),rank:'new',delArm:null,
   rs:Object.assign({bg:'paper',size:21,font:'Literata',lh:2,speed:3,rate:1,autonext:true},store('vc_reader')||{}),
   noti:NOTI.slice(),muted:false,
-  chat:[{u:'Quản trị viên',m:'Chào mừng mọi người đến với Sảnh Trò Chuyện!',c:162}]};
+  chat: store('vc_chat') || [{u:'Quản trị viên',m:'Chào mừng mọi người đến với Sảnh Trò Chuyện!',c:162}]};
 var BGS={paper:['#FFFFFF','#222B27'],sepia:['#F3EAD3','#3B3224'],grey:['#D9DDDA','#1E2421'],night:['#10151A','#C9D3D8']};
 
 /* ===== KHUNG TRANG ===== */
@@ -299,7 +299,7 @@ function section(sec,title,desc){
     gridOf(newest(STORIES.filter(function(s){return s.sec===sec})),'Chưa có truyện nào ở mục này.');
 }
 V.dai=function(){return section('dai','Vườn Truyện Dài','Những bộ truyện nhiều chương, đọc dần qua từng buổi tối.')};
-V.ngan=function(){return section('ngan','Vườn Truyện Ngắn','Truyện đọc trọn trong vài phút.')};
+V.ngan=function(){return section('ngan','Vườn Truyện Ngắn','Truyện đọc trong vài phút.')};
 
 V.story=function(){
   var s=byId(S.arg),P=store('vc_prog')||{},p=P[s.id]||0;
@@ -368,7 +368,7 @@ V.rank=function(){
   }).join('')+'</ol>';
 };
 V.chat=function(){
-  return '<h1 style="font-size:30px">Sảnh Trò Chuyện</h1><p style="color:var(--muted);margin:6px 0 16px">Tin nhắn ở đây chỉ hiển thị trên trang của bạn và mất khi tải lại.</p>'+
+  return '<h1 style="font-size:30px">Sảnh Trò Chuyện</h1><p style="color:var(--muted);margin:6px 0 16px">Tin nhắn ở đây được lưu lại cục bộ trên trình duyệt của bạn.</p>'+
    '<div class="panel"><div class="chat" id="chatList">'+S.chat.map(msgHtml).join('')+'</div><form class="chatform" id="chatForm"><input type="text" id="chatIn" placeholder="Nhập tin nhắn…" maxlength="300" aria-label="Tin nhắn"><button class="btn" type="submit">Gửi</button></form></div>';
 };
 function msgHtml(m){return '<div class="msg"><div class="av" style="background:hsl('+m.c+' 40% 36%)">'+esc(m.u.charAt(0).toUpperCase())+'</div><div class="b"><small>'+esc(m.u)+'</small>'+esc(m.m)+'</div></div>'}
@@ -585,6 +585,7 @@ document.addEventListener('submit',function(e){
   if(f.id==='chatForm'){
     var i=$('#chatIn'),v=i.value.trim();if(!v)return;
     S.chat.push({u:S.user?S.user.name:'Khách',m:v,c:S.user?162:30});
+    store('vc_chat', S.chat); /* Dòng mới: Lưu đoạn chat vào bộ nhớ trình duyệt */
     $('#chatList').insertAdjacentHTML('beforeend',msgHtml(S.chat[S.chat.length-1]));
     i.value='';var l=$('#chatList');l.scrollTop=l.scrollHeight;return;
   }
