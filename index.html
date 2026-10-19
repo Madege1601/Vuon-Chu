@@ -971,10 +971,22 @@ document.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.f
 })();
 </script>
 </body>
+<body>
+
+<!-- ===== BỨC TƯỜNG BẢO VỆ (MÃ HÓA SHA-256 + CHẶN F12) ===== -->
+<div id="gatekeeper" style="position:fixed;inset:0;z-index:9999999;background:var(--bg,#F4F7F4);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface,#FFF);padding:32px;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.15);text-align:center;max-width:400px;width:100%;border:1px solid var(--line,#D9E3DD);">
+    <h1 style="font-family:var(--f-display,'Playfair Display',serif);margin:0 0 8px;font-size:28px;color:var(--ink,#1B2924);">Vườn Chữ Riêng Tư</h1>
+    <p style="color:var(--muted,#5A6B65);margin-bottom:24px;font-size:14.5px;">Web đang trong chế độ hạn chế. Vui lòng nhập mã truy cập (Key) để vào.</p>
+    <input type="password" id="gateKey" placeholder="Nhập mã truy cập..." style="width:100%;padding:12px 14px;border:1px solid var(--line,#D9E3DD);border-radius:10px;margin-bottom:8px;box-sizing:border-box;font-family:inherit;font-size:15px;background:var(--surface,#FFF);color:var(--ink,#1B2924);">
+    <p id="gateErr" style="color:var(--warn,#B4531E);font-size:13px;margin:0 0 16px;min-height:18px;"></p>
+    <button id="gateBtn" style="width:100%;padding:12px;background:var(--accent,#1D6B58);color:#FFF;border:none;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer;font-family:inherit;">Mở Khóa</button>
+  </div>
+</div>
+
 <script>
 (function(){
   // MÃ BĂM SHA-256 CỦA MẬT KHẨU "vuonchu2026"
-  // Dù ai bấm F12 cũng chỉ thấy dải này, không thể dịch ngược ra chữ "vuonchu2026"
   var HASH_KEY = "efdf86beec71d2b826b5bc93c0bc5e8a5b9911e35a9bd084b63e5b3f115e5132"; 
 
   var gate = document.getElementById('gatekeeper');
@@ -988,7 +1000,6 @@ document.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.f
     document.body.style.overflow = 'hidden';
   }
 
-  // Hàm chuyển mật khẩu nhập vào thành mã băm SHA-256 bằng Web Crypto API
   async function sha256(str) {
     var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
     return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
@@ -1022,5 +1033,7 @@ document.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.f
     }
   });
 })();
+</script>
+<!-- =================================================== -->
 </script>
 </html>
