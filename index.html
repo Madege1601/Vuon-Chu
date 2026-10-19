@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vườn Chữ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=EB+Garamond:wght@400;500&family=Literata:opsz,wght@7..72,400;7..72,600&family=Montserrat:wght@400;600&family=Open+Sans:wght@400;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== MÀU SẮC VÀ PHÔNG CHỮ: sửa ở đây để đổi giao diện ===== */
+:root{
+  --bg:#F4F7F4; --surface:#FFFFFF; --ink:#1B2924; --muted:#5A6B65; --line:#D9E3DD;
+  --accent:#1D6B58; --accent-ink:#FFFFFF; --soft:#E5EFEA; --warn:#B4531E;
+  --topbar:#F4F7F4; --shadow:0 8px 28px rgba(20,40,32,.12);
+  --f-ui:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-display:'Playfair Display',Georgia,'Times New Roman',serif;
+  --f-read:'Literata',Georgia,serif;
+  --rbg:#FFFFFF; --rfg:#222B27;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0F1613; --surface:#18221E; --ink:#E6EFEA; --muted:#93A59D; --line:#2A3832;
+  --accent:#58C4A4; --accent-ink:#06150F; --soft:#1E2D27; --warn:#F0966A;
+  --topbar:#0F1613; --shadow:0 8px 28px rgba(0,0,0,.5); color-scheme:dark}}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
+h1,h2,h3{font-family:var(--f-display);line-height:1.2;text-wrap:balance;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;left:-9999px}
+
+.topbar{position:sticky;top:0;z-index:50;background:var(--topbar);border-bottom:1px solid var(--line);
+  margin-inline:-16px;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:10px}
+.brand{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:.2px;color:var(--ink);background:none;border:0;padding:0;display:flex;align-items:center;gap:8px}
+.brand i{width:26px;height:26px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-style:normal;font-size:15px}
+.grow{flex:1}
+.iconbtn{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:10px;height:38px;min-width:38px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.iconbtn:hover{border-color:var(--accent)}
+.badge{position:absolute;top:-6px;right:-6px;background:var(--warn);color:#fff;font-size:11px;border-radius:99px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px}
+.menu-toggle{display:none}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:8px 16px;font-weight:600;display:inline-block}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.sm{padding:5px 12px;font-size:13px}
+
+.app{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:28px;padding-block:22px 48px}
+.rail{position:sticky;top:74px;align-self:start;display:flex;flex-direction:column;gap:2px}
+.rail button{text-align:left;border:0;background:none;padding:10px 12px;border-radius:10px;color:var(--muted);font-weight:500;display:flex;gap:10px;align-items:center}
+.rail button:hover{background:var(--soft);color:var(--ink)}
+.rail button[aria-current="page"]{background:var(--soft);color:var(--accent);font-weight:600}
+.rail .grp{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 12px 4px}
+.scrim{display:none}
+main{min-width:0}
+
+.hero{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:28px;display:grid;gap:10px;position:relative;overflow:hidden}
+.hero h1{font-size:clamp(26px,4vw,40px)}
+.hero p{margin:0;color:var(--muted);max-width:60ch}
+.hero .glyph{position:absolute;right:-10px;top:-30px;font-family:var(--f-display);font-size:190px;color:var(--soft);line-height:1;pointer-events:none;user-select:none}
+.hero>*:not(.glyph){position:relative}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sec-title{display:flex;align-items:baseline;justify-content:space-between;margin:30px 0 12px;gap:12px}
+.sec-title h2{font-size:22px}
+.sec-title button{border:0;background:none;color:var(--accent);font-weight:600;padding:0}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px}
+.card{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;overflow:hidden;padding:0;display:flex;flex-direction:column;min-width:0}
+.card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.cover{aspect-ratio:3/4;max-width:100%;display:grid;place-items:center;color:#fff;font-family:var(--f-display);font-size:54px;position:relative}
+.cover small{position:absolute;left:10px;bottom:8px;font-family:var(--f-ui);font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+.card .meta{padding:10px 12px 12px;display:grid;gap:2px}
+.card .meta b{font-weight:600;line-height:1.3}
+.card .meta span{color:var(--muted);font-size:13px}
+.chip{display:inline-block;font-size:12px;border:1px solid var(--line);background:var(--soft);color:var(--muted);border-radius:99px;padding:1px 10px}
+
+.panel{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:18px}
+.detail{display:grid;grid-template-columns:200px minmax(0,1fr);gap:24px}
+.detail .cover{border-radius:12px;font-size:70px}
+.chapters{display:grid;gap:6px;margin-top:14px}
+.chapters button{display:flex;justify-content:space-between;gap:10px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px}
+.chapters button:hover{border-color:var(--accent)}
+
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.mrow .mt{display:grid;min-width:0}
+.mrow .mt b{overflow-wrap:anywhere}
+.btn.danger{color:var(--warn);border-color:var(--warn)}
+
+.rank{display:grid;gap:8px;padding:0;margin:0;list-style:none}
+.rank li{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px}
+.rank .no{font-family:var(--f-display);font-size:22px;color:var(--muted);text-align:center}
+.rank li:nth-child(-n+3) .no{color:var(--accent)}
+.rank .bar{height:6px;background:var(--soft);border-radius:9px;margin-top:6px;overflow:hidden}
+.rank .bar i{display:block;height:100%;background:var(--accent);border-radius:9px}
+.rank .num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 14px}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+.chat{display:grid;gap:10px;max-height:52vh;overflow:auto;padding:4px 2px 4px 0}
+.msg{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;font-size:14px}
+.msg .b{background:var(--soft);border-radius:12px;padding:8px 12px;overflow-wrap:anywhere}
+.msg .b small{color:var(--muted);display:block;font-size:12px}
+.chatform{display:flex;gap:8px;margin-top:12px}
+input[type=text],input[type=password],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%;min-width:0}
+textarea{resize:vertical;line-height:1.6;font-family:inherit}
+details.faq{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 16px;margin-bottom:8px}
+details.faq summary{cursor:pointer;font-weight:600}
+details.faq p{color:var(--muted);margin:8px 0 0}
+
+.reader-wrap{display:grid;gap:14px}
+.reader-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.reader{background:var(--rbg);color:var(--rfg);border-radius:16px;border:1px solid var(--line);padding:clamp(20px,5vw,56px);font-family:var(--f-read);font-size:21px;line-height:2}
+.reader h2{font-size:1.15em;margin-bottom:.6em;font-family:var(--f-display);max-width:62ch;margin-inline:auto}
+.reader p{margin:0 0 1em;max-width:62ch;margin-inline:auto;padding:0 6px;border-radius:6px}
+.reader p.now{background:rgba(29,107,88,.16)}
+.chnav{display:flex;justify-content:space-between;gap:10px}
+
+.modal{position:fixed;inset:0;z-index:100;background:rgba(8,16,12,.55);display:grid;place-items:center;padding:16px}
+.modal[hidden]{display:none!important}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);width:min(460px,100%);max-height:88vh;overflow:auto;padding:22px}
+.sheet h2{font-size:22px;margin-bottom:4px}
+.sheet .x{float:right;border:0;background:none;font-size:22px;line-height:1;color:var(--muted)}
+.field{display:grid;gap:4px;margin:10px 0}
+.field label{font-size:13px;color:var(--muted);font-weight:600}
+.note{font-size:12.5px;color:var(--muted)}
+.pop{position:absolute;right:0;top:46px;width:min(320px,86vw);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:10px;z-index:70}
+.pop[hidden]{display:none!important}
+.pop button.item{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px}
+.pop button.item:hover{background:var(--soft)}
+.nitem{padding:8px 10px;border-radius:8px;font-size:14px}
+.nitem.un{background:var(--soft)}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.sw{display:flex;gap:8px}
+.sw button{width:30px;height:30px;border-radius:50%;border:2px solid var(--line)}
+.sw button[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--surface) inset}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;z-index:200;font-size:14px;max-width:90vw;text-align:center}
+.toast[hidden]{display:none!important}
+footer{border-top:1px solid var(--line);margin-top:40px;padding-top:18px;color:var(--muted);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between}
+footer a,footer button{color:var(--accent);background:none;border:0;padding:0;text-decoration:underline}
+
+@media (max-width:820px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .menu-toggle{display:inline-flex}
+  .rail{position:fixed;z-index:90;top:0;bottom:0;left:0;width:min(280px,82vw);background:var(--surface);border-right:1px solid var(--line);
+    padding:calc(env(safe-area-inset-top,0px) + 16px) 12px 16px max(12px,env(safe-area-inset-left,0px));transform:translateX(-105%);transition:transform .2s;overflow:auto;align-self:auto}
+  .rail.open{transform:none}
+  .scrim.open{display:block;position:fixed;inset:0;z-index:80;background:rgba(8,16,12,.45)}
+  .detail{grid-template-columns:minmax(0,1fr)}
+  .detail .cover{max-width:180px}
+  .reader{font-size:19px}
+}
+@media (prefers-reduced-motion:reduce){.rail{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="iconbtn menu-toggle" id="menuBtn" aria-label="Mở menu">☰</button>
+  <button class="brand" data-go="home"><i>V</i>Vườn Chữ</button>
+  <span class="grow"></span>
+  <button class="iconbtn" id="searchBtn" aria-label="Tìm kiếm">⌕ <span class="sr">Tìm kiếm</span></button>
+  <span style="position:relative">
+    <button class="iconbtn" id="bellBtn" aria-label="Thông báo">🔔<span class="badge" id="bellBadge">1</span></button>
+    <div class="pop" id="bellPop" hidden></div>
+  </span>
+  <span style="position:relative" id="userSlot"></span>
+</header>
+
+<div class="scrim" id="scrim"></div>
+<div class="app">
+  <nav class="rail" id="rail" aria-label="Điều hướng chính"></nav>
+  <main id="view"></main>
+</div>
+
+<div class="modal" id="authModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-label="Tài khoản"></div></div>
+<div class="modal" id="searchModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-label="Tìm kiếm"></div></div>
+<div class="modal" id="settingsModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-label="Cài đặt đọc truyện"></div></div>
+<div class="modal" id="creditModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-label="Ghi công"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+/* ===== TIỆN ÍCH ===== */
+var $=function(s,r){return (r||document).querySelector(s)};
+var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function store(k,v){try{if(v===undefined){var r=localStorage.getItem(k);return r?JSON.parse(r):null}localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}}
+function unstore(k){try{localStorage.removeItem(k)}catch(e){}}
+var toastT;function toast(t){var el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){el.hidden=true},2600)}
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function nfc(s){return String(s).normalize('NFC')}
+function fmtDate(t){return t?new Date(t).toLocaleDateString('vi-VN'):''}
+
+/* ===== DỮ LIỆU TRUYỆN =====
+   Truyện bạn đăng hoặc sửa trên web được lưu trong trình duyệt của bạn (khóa vc_stories).
+   Muốn mọi người cùng thấy: vào "Quản lý truyện", bấm "Tải truyen.json",
+   rồi đưa file truyen.json lên GitHub, cùng thư mục với index.html. */
+function clean(a){
+  return (Array.isArray(a)?a:[]).filter(function(s){return s&&s.title&&Array.isArray(s.ch)}).map(function(s,i){
+    return {id:String(s.id||('s'+Date.now().toString(36)+i)),sec:s.sec==='ngan'?'ngan':'dai',title:String(s.title),author:String(s.author||''),
+      hue:typeof s.hue==='number'?s.hue:200,tags:Array.isArray(s.tags)?s.tags.map(String):[],intro:String(s.intro||''),created:s.created||0,
+      ch:s.ch.filter(function(c){return c&&Array.isArray(c.p)}).map(function(c){return {t:String(c.t||''),p:c.p.map(String)}})};
+  });
+}
+function hasLocal(){return Array.isArray(store('vc_stories'))}
+var BASE=[];
+var STORIES=hasLocal()?clean(store('vc_stories')):[];
+function saveStories(){store('vc_stories',STORIES)}
+function byId(id){return STORIES.filter(function(s){return s.id===id})[0]}
+
+/* Tách nội dung thành chương: dòng bắt đầu bằng "Chương" hoặc "Trọn truyện" mở chương mới; mỗi dòng còn lại là một đoạn văn */
+var HEAD=/^(chương|trọn truyện)/i;
+function parseChapters(raw,sec){
+  var chs=[],cur=null;
+  nfc(raw).split('\n').forEach(function(l){
+    l=l.trim();if(!l)return;
+    if(HEAD.test(l)){if(cur&&cur.p.length)chs.push(cur);cur={t:l,p:[]}}
+    else{if(!cur)cur={t:sec==='ngan'?'Trọn truyện':'Chương 1',p:[]};cur.p.push(l)}
+  });
+  if(cur&&cur.p.length)chs.push(cur);
+  return chs;
+}
+function toRaw(s){return s.ch.map(function(c,i){var t=HEAD.test(c.t)?c.t:'Chương '+(i+1)+': '+c.t;return t+'\n'+c.p.join('\n')}).join('\n\n')}
+
+/* ===== NỘI DUNG TRANG TĨNH ===== */
+var NAV=[
+ {id:'home',label:'Trang chủ',ic:'⌂'},
+ {id:'chat',label:'Sảnh Trò Chuyện',ic:'✉'},
+ {g:'Thư viện'},
+ {id:'dai',label:'Vườn Truyện Dài',ic:'❦'},
+ {id:'ngan',label:'Vườn Truyện Ngắn',ic:'✎'},
+ {id:'theory',label:'Cơ Sở Lý Thuyết',ic:'☰'},
+ {g:'Cộng đồng'},
+ {id:'rank',label:'Bảng Xếp Hạng',ic:'★'},
+ {id:'staff',label:'Công Tác Thành Viên',ic:'✦'},
+ {g:'Quản trị'},
+ {id:'manage',label:'Quản lý truyện',ic:'⚙'}
+];
+var NOTI=[{id:1,t:'Chào mừng bạn đến với Vườn Chữ. Vào “Quản lý truyện” để đăng truyện đầu tiên.',un:true}];
+var THEORY=[
+ ['Cách đăng truyện?','Vào “Quản lý truyện”, bấm “Truyện mới”, điền thông tin rồi dán nội dung. Mỗi dòng là một đoạn văn. Gõ “Chương 1: Tên chương” ở đầu dòng để bắt đầu một chương mới.'],
+ ['Truyện được lưu ở đâu?','Truyện bạn đăng hoặc sửa được lưu trong trình duyệt của bạn. Muốn mọi người cùng đọc, vào “Quản lý truyện”, tải file truyen.json rồi đưa lên cùng thư mục với index.html trên GitHub.'],
+ ['Tôi có thể chỉnh giao diện đọc không?','Có. Trong trang đọc, nhấn “Cài đặt đọc” để đổi màu nền, cỡ chữ, phông chữ và giãn dòng. Thiết lập được lưu trên trình duyệt của bạn.'],
+ ['“Đọc to” và “Cuộn tự động” hoạt động thế nào?','Đọc to dùng giọng đọc có sẵn của thiết bị, đọc từng đoạn và tô sáng đoạn đang đọc. Cuộn tự động kéo trang xuống đều với tốc độ bạn chọn, và có thể tự chuyển chương khi đến cuối.'],
+ ['Nội quy cộng đồng','Tôn trọng tác giả và người dịch, ghi rõ nguồn khi đăng lại, không đăng nội dung vi phạm pháp luật, không công kích cá nhân.']
+];
+var CREDITS=[['Người sáng lập','Tên thành viên'],['Thiết kế & lập trình','Tên thành viên'],['Hội đồng biên tập','Tên thành viên · Tên thành viên']];
+
+/* ===== TRẠNG THÁI ===== */
+var S={route:'home',arg:null,ch:0,user:store('vc_user'),rank:'new',delArm:null,
+  rs:Object.assign({bg:'paper',size:21,font:'Literata',lh:2,speed:3,rate:1,autonext:true},store('vc_reader')||{}),
+  noti:NOTI.slice(),muted:false,
+  chat:[{u:'Quản trị viên',m:'Chào mừng mọi người đến với Sảnh Trò Chuyện!',c:162}]};
+var BGS={paper:['#FFFFFF','#222B27'],sepia:['#F3EAD3','#3B3224'],grey:['#D9DDDA','#1E2421'],night:['#10151A','#C9D3D8']};
+
+/* ===== KHUNG TRANG ===== */
+function renderRail(){
+  $('#rail').innerHTML=NAV.map(function(n){
+    if(n.g)return '<div class="grp">'+n.g+'</div>';
+    var cur=S.route===n.id||((S.route==='story'||S.route==='read'||S.route==='edit')&&S.arg&&byId(S.arg)&&byId(S.arg).sec===n.id);
+    return '<button data-go="'+n.id+'"'+(cur?' aria-current="page"':'')+'><span aria-hidden="true">'+n.ic+'</span>'+n.label+'</button>';
+  }).join('');
+}
+function renderUser(){
+  var s=$('#userSlot');
+  if(!S.user){s.innerHTML='<button class="btn sm" id="loginBtn">Đăng nhập</button>';return}
+  s.innerHTML='<button class="iconbtn" id="userBtn" aria-label="Tài khoản"><span class="av" style="width:26px;height:26px;font-size:12px;background:var(--accent);color:var(--accent-ink)">'+esc(S.user.name.charAt(0).toUpperCase())+'</span></button>'+
+   '<div class="pop" id="userPop" hidden><div class="nitem"><b>'+esc(S.user.name)+'</b><br><span class="note">@'+esc(S.user.username)+'</span></div>'+
+   '<button class="item" data-act="profile">Hồ sơ cá nhân</button><button class="item" data-go="manage">Quản lý truyện</button><button class="item" data-act="logout">Đăng xuất</button></div>';
+}
+function renderBell(){
+  var un=S.noti.filter(function(n){return n.un}).length;
+  var b=$('#bellBadge');b.textContent=un;b.hidden=!un||S.muted;
+  $('#bellPop').innerHTML='<div class="row" style="justify-content:space-between;margin:2px 4px 8px"><b>Thông báo</b><span class="row"><button class="btn ghost sm" data-act="mute">'+(S.muted?'Bật tiếng':'Tắt tiếng')+'</button><button class="btn ghost sm" data-act="readall">Đánh dấu đã đọc</button></span></div>'+
+   S.noti.map(function(n){return '<div class="nitem'+(n.un?' un':'')+'">'+esc(n.t)+'</div>'}).join('');
+}
+function cover(s){return '<div class="cover" style="background:linear-gradient(155deg,hsl('+s.hue+' 45% 38%),hsl('+(s.hue+40)+' 50% 22%))">'+esc(s.title.charAt(0))+'<small>'+(s.sec==='dai'?'Truyện dài':'Truyện ngắn')+'</small></div>'}
+function card(s){return '<button class="card" data-story="'+esc(s.id)+'">'+cover(s)+'<span class="meta"><b>'+esc(s.title)+'</b><span>'+esc(s.author||'Chưa rõ tác giả')+' · '+s.ch.length+' chương</span></span></button>'}
+function empty(m,withBtn){return '<div class="panel" style="text-align:center;color:var(--muted);display:grid;gap:12px;justify-items:center"><span>'+m+'</span>'+(withBtn?'<button class="btn" data-edit="new">＋ Đăng truyện mới</button>':'')+'</div>'}
+function gridOf(list,msg){return list.length?'<div class="grid">'+list.map(card).join('')+'</div>':empty(msg,true)}
+function newest(list){return list.slice().sort(function(a,b){return (b.created||0)-(a.created||0)})}
+
+/* ===== CÁC TRANG ===== */
+var V={};
+V.home=function(){
+  return '<section class="hero"><span class="glyph" aria-hidden="true">V</span><h1>Vườn Chữ</h1><p>Không gian đọc, dịch và chia sẻ truyện của cộng đồng. Chọn một vườn, mở một chương, chỉnh trang đọc theo cách bạn thích.</p>'+
+   '<div class="row"><button class="btn" data-go="dai">Vào Vườn Truyện Dài</button><button class="btn ghost" data-go="ngan">Truyện ngắn đọc nhanh</button>'+(S.user?'':'<button class="btn ghost" id="heroLogin">Đăng ký học viên</button>')+'</div></section>'+
+   '<div class="sec-title"><h2>Mới đăng</h2><button data-go="rank">Xem bảng xếp hạng</button></div>'+gridOf(newest(STORIES).slice(0,8),'Chưa có truyện nào được đăng.');
+};
+function section(sec,title,desc){
+  return '<div class="page-head"><h1 style="font-size:30px">'+title+'</h1><button class="btn ghost sm" data-edit="new">＋ Truyện mới</button></div><p style="color:var(--muted);margin:6px 0 20px">'+desc+'</p>'+
+    gridOf(newest(STORIES.filter(function(s){return s.sec===sec})),'Chưa có truyện nào ở mục này.');
+}
+V.dai=function(){return section('dai','Vườn Truyện Dài','Những bộ truyện nhiều chương, đọc dần qua từng buổi tối.')};
+V.ngan=function(){return section('ngan','Vườn Truyện Ngắn','Truyện đọc trọn trong vài phút.')};
+
+V.story=function(){
+  var s=byId(S.arg),P=store('vc_prog')||{},p=P[s.id]||0;
+  return '<button class="btn ghost sm" data-go="'+s.sec+'">← Quay lại</button><div class="detail" style="margin-top:16px">'+cover(s)+'<div><h1 style="font-size:30px">'+esc(s.title)+'</h1>'+
+   '<p style="color:var(--muted);margin:6px 0">Tác giả: '+esc(s.author||'Chưa rõ')+' · '+s.ch.length+' chương</p>'+
+   (s.tags.length?'<div class="row" style="margin:8px 0">'+s.tags.map(function(t){return '<span class="chip">'+esc(t)+'</span>'}).join('')+'</div>':'')+
+   '<p>'+esc(s.intro)+'</p><div class="row">'+
+   (s.ch.length?'<button class="btn" data-read="0">Đọc từ đầu</button>':'')+
+   (p>0&&p<s.ch.length?'<button class="btn ghost" data-read="'+p+'">Đọc tiếp: chương '+(p+1)+'</button>':'')+
+   '<button class="btn ghost" data-edit="'+esc(s.id)+'">✎ Sửa truyện</button></div>'+
+   '<div class="chapters" style="margin-top:20px">'+
+   s.ch.map(function(c,i){return '<button data-read="'+i+'"><span>'+esc(c.t)+'</span><span class="note">'+c.p.length+' đoạn</span></button>'}).join('')+'</div></div></div>';
+};
+
+V.edit=function(){
+  var isNew=S.arg==='new',s=isNew?{title:'',author:'',intro:'',sec:'dai',tags:[],ch:[]}:byId(S.arg);
+  return '<button class="btn ghost sm" '+(isNew?'data-go="manage"':'data-story="'+esc(s.id)+'"')+'>← Hủy và quay lại</button>'+
+   '<div class="panel" style="margin-top:16px;max-width:820px"><h2 style="font-size:24px;margin-bottom:6px">'+(isNew?'Đăng truyện mới':'Chỉnh sửa truyện')+'</h2>'+
+   '<form id="editForm" data-id="'+(isNew?'new':esc(s.id))+'" style="display:grid;gap:6px" autocomplete="off">'+
+   '<div class="field"><label for="eTitle">Tên truyện</label><input type="text" id="eTitle" required maxlength="120" value="'+esc(s.title)+'"></div>'+
+   '<div class="field"><label for="eAuthor">Tác giả</label><input type="text" id="eAuthor" maxlength="80" value="'+esc(s.author)+'"></div>'+
+   '<div class="field"><label for="eSec">Loại truyện</label><select id="eSec"><option value="dai"'+(s.sec==='dai'?' selected':'')+'>Truyện dài (Vườn Truyện Dài)</option><option value="ngan"'+(s.sec==='ngan'?' selected':'')+'>Truyện ngắn (Vườn Truyện Ngắn)</option></select></div>'+
+   '<div class="field"><label for="eTags">Thể loại (cách nhau bằng dấu phẩy)</label><input type="text" id="eTags" placeholder="Ví dụ: Đời thường, Hoài niệm" value="'+esc(s.tags.join(', '))+'"></div>'+
+   '<div class="field"><label for="eIntro">Giới thiệu ngắn</label><textarea id="eIntro" rows="3">'+esc(s.intro)+'</textarea></div>'+
+   '<div class="field"><label for="eContent">Nội dung</label><textarea id="eContent" rows="18" placeholder="Chương 1: Tên chương&#10;Đoạn văn thứ nhất.&#10;Đoạn văn thứ hai.&#10;&#10;Chương 2: Tên chương&#10;Đoạn văn thứ nhất.">'+esc(isNew?'':toRaw(s))+'</textarea>'+
+   '<span class="note">Mỗi dòng là một đoạn văn. Gõ “Chương 1: Tên chương” ở đầu dòng để bắt đầu một chương mới. Truyện ngắn có thể bỏ dòng chương.</span></div>'+
+   '<p class="note" id="eErr" style="color:var(--warn);min-height:1.2em"></p>'+
+   '<div class="row"><button type="submit" class="btn" style="padding:10px 24px">'+(isNew?'Đăng truyện':'Lưu thay đổi')+'</button></div></form></div>';
+};
+
+V.manage=function(){
+  var rows=STORIES.length?newest(STORIES).map(function(s){
+    var armed=S.delArm===s.id,id=esc(s.id);
+    return '<div class="mrow"><div class="mt"><b>'+esc(s.title)+'</b><span class="note">'+(s.sec==='dai'?'Truyện dài':'Truyện ngắn')+' · '+s.ch.length+' chương · '+esc(s.author||'chưa có tác giả')+'</span></div>'+
+      '<div class="row"><button class="btn ghost sm" data-story="'+id+'">Xem</button><button class="btn ghost sm" data-edit="'+id+'">Sửa</button>'+
+      '<button class="btn ghost sm'+(armed?' danger':'')+'" data-del="'+id+'">'+(armed?'Bấm lần nữa để xóa':'Xóa')+'</button></div></div>';
+  }).join(''):empty('Chưa có truyện nào.',false);
+  var armedReset=S.delArm==='__reset';
+  return '<div class="page-head"><h1 style="font-size:30px">Quản lý truyện</h1><button class="btn" data-edit="new">＋ Truyện mới</button></div>'+
+   '<p style="color:var(--muted);margin:6px 0 16px">Đăng, sửa và xóa truyện ngay trên web. Thay đổi được lưu trong trình duyệt này.</p>'+rows+
+   '<div class="panel" style="margin-top:20px;display:grid;gap:12px"><h3 style="font-size:18px">Đưa truyện lên cho mọi người cùng đọc</h3>'+
+   '<p class="note" style="margin:0">Truyện bạn đăng nằm trong trình duyệt của bạn. Để người khác thấy: bấm “Tải truyen.json”, rồi tải file đó lên GitHub, cùng thư mục với index.html, đặt tên đúng là <b>truyen.json</b>. Trang sẽ tự đọc file này cho người xem.</p>'+
+   '<div class="row"><button class="btn" data-act="export">Tải truyen.json</button><button class="btn ghost" data-act="copyjson">Sao chép dữ liệu</button>'+
+   '<label class="btn ghost" for="importFile" style="cursor:pointer">Nhập dữ liệu</label><input type="file" id="importFile" accept=".json,application/json" class="sr">'+
+   (hasLocal()?'<button class="btn ghost'+(armedReset?' danger':'')+'" data-act="resetlocal">'+(armedReset?'Bấm lần nữa để bỏ bản sửa':'Bỏ bản sửa trên máy này')+'</button>':'')+'</div></div>';
+};
+
+V.read=function(){
+  var s=byId(S.arg),c=s.ch[S.ch];
+  return '<div class="reader-wrap"><div class="reader-bar"><button class="btn ghost sm" data-story="'+esc(s.id)+'">← '+esc(s.title)+'</button><span class="grow"></span>'+
+   '<button class="btn ghost sm" id="ttsBtn">▶ Đọc to</button><button class="btn ghost sm" id="scrollBtn">▶ Cuộn tự động</button><button class="btn sm" id="setBtn">Cài đặt đọc</button></div>'+
+   '<article class="reader" id="reader"><h2>'+esc(c.t)+'</h2>'+c.p.map(function(p){return '<p>'+esc(p)+'</p>'}).join('')+'</article>'+
+   '<div class="chnav"><button class="btn ghost" data-nav="-1"'+(S.ch===0?' disabled style="opacity:.4"':'')+'>← Chương trước</button><span class="note" style="align-self:center">'+(S.ch+1)+' / '+s.ch.length+'</span><button class="btn" data-nav="1"'+(S.ch>=s.ch.length-1?' disabled style="opacity:.4"':'')+'>Chương sau →</button></div></div>';
+};
+
+V.rank=function(){
+  var head='<h1 style="font-size:30px">Bảng Xếp Hạng</h1><p style="color:var(--muted);margin:6px 0 16px">Sắp xếp theo thời gian đăng hoặc độ dài truyện.</p>'+
+   '<div class="tabs">'+[['new','Mới đăng'],['long','Nhiều chương']].map(function(t){return '<button data-rank="'+t[0]+'" aria-pressed="'+(S.rank===t[0])+'">'+t[1]+'</button>'}).join('')+'</div>';
+  if(!STORIES.length)return head+empty('Chưa có truyện nào để xếp hạng.',false);
+  var list=S.rank==='long'?STORIES.slice().sort(function(a,b){return b.ch.length-a.ch.length}):newest(STORIES);
+  var max=Math.max.apply(null,list.map(function(s){return s.ch.length}))||1;
+  return head+'<ol class="rank">'+list.map(function(s,i){
+    var lab=S.rank==='long'?s.ch.length+' chương':fmtDate(s.created);
+    return '<li><span class="no">'+(i+1)+'</span><button data-story="'+esc(s.id)+'" style="text-align:left;border:0;background:none;padding:0;min-width:0"><b>'+esc(s.title)+'</b><span class="note" style="display:block">'+esc(s.author||'Chưa rõ tác giả')+'</span>'+
+      (S.rank==='long'?'<div class="bar"><i style="width:'+Math.round(s.ch.length/max*100)+'%"></i></div>':'')+'</button><span class="num">'+lab+'</span></li>';
+  }).join('')+'</ol>';
+};
+V.chat=function(){
+  return '<h1 style="font-size:30px">Sảnh Trò Chuyện</h1><p style="color:var(--muted);margin:6px 0 16px">Tin nhắn ở đây chỉ hiển thị trên trang của bạn và mất khi tải lại.</p>'+
+   '<div class="panel"><div class="chat" id="chatList">'+S.chat.map(msgHtml).join('')+'</div><form class="chatform" id="chatForm"><input type="text" id="chatIn" placeholder="Nhập tin nhắn…" maxlength="300" aria-label="Tin nhắn"><button class="btn" type="submit">Gửi</button></form></div>';
+};
+function msgHtml(m){return '<div class="msg"><div class="av" style="background:hsl('+m.c+' 40% 36%)">'+esc(m.u.charAt(0).toUpperCase())+'</div><div class="b"><small>'+esc(m.u)+'</small>'+esc(m.m)+'</div></div>'}
+V.theory=function(){
+  return '<h1 style="font-size:30px">Cơ Sở Lý Thuyết</h1><p style="color:var(--muted);margin:6px 0 16px">Sổ tay hướng dẫn và nội quy của Vườn Chữ.</p>'+
+   THEORY.map(function(t,i){return '<details class="faq"'+(i===0?' open':'')+'><summary>'+esc(t[0])+'</summary><p>'+esc(t[1])+'</p></details>'}).join('');
+};
+V.staff=function(){
+  return '<h1 style="font-size:30px">Công Tác Thành Viên</h1><p style="color:var(--muted);margin:6px 0 16px">Những vị trí bạn có thể đồng hành cùng Vườn Chữ.</p><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">'+
+   [['Biên tập viên','Đọc duyệt, sửa lỗi chính tả và gợi ý chỉnh câu.'],['Họa sĩ bìa','Vẽ bìa truyện và khung ảnh đại diện.'],['Điều phối viên','Giữ cho Sảnh Trò Chuyện vui vẻ và đúng nội quy.'],['Dịch giả','Nhận truyện từ danh sách chờ dịch và đăng theo từng chương.']].map(function(r){return '<div class="panel"><h3 style="font-size:18px;margin-bottom:6px">'+r[0]+'</h3><p style="margin:0 0 12px;color:var(--muted)">'+r[1]+'</p><button class="btn ghost sm" data-act="apply">Đăng ký</button></div>'}).join('')+'</div>'+
+   '<p style="margin-top:20px"><button class="btn ghost" data-act="credits">Xem bức tường ghi công</button></p>';
+};
+
+/* ===== ĐIỀU HƯỚNG ===== */
+function stopMedia(){stopScroll();stopTTS()}
+function go(route,arg,ch){
+  stopMedia();
+  if((route==='story'||route==='read')&&!byId(arg)){route='home';arg=null}
+  if(route==='edit'&&arg!=='new'&&!byId(arg)){route='manage';arg=null}
+  if(route==='read'){
+    var s0=byId(arg);
+    if(!s0.ch.length){toast('Truyện này chưa có chương nào');route='story';ch=0}
+    else{ch=Math.min(Math.max(ch||0,0),s0.ch.length-1);var P=store('vc_prog')||{};P[arg]=ch;store('vc_prog',P)}
+  }
+  if(route!=='manage')S.delArm=null;
+  S.route=route;S.arg=arg||null;S.ch=ch||0;
+  $('#view').innerHTML=V[route]()+footer();
+  renderRail();closeDrawer();window.scrollTo(0,0);
+  if(route==='read')applyReader();
+}
+function footer(){return '<footer><span>Vườn Chữ · © 2026</span><span><button data-act="credits">Bảng vinh danh</button> · <button data-go="theory">Sổ tay hướng dẫn</button></span><span>Hỗ trợ: support@example.com</span></footer>'}
+
+/* ===== TRANG ĐỌC ===== */
+function applyReader(){
+  var r=$('#reader');if(!r)return;var c=BGS[S.rs.bg]||BGS.paper;
+  r.style.background=c[0];r.style.color=c[1];
+  r.style.fontSize=S.rs.size+'px';r.style.lineHeight=S.rs.lh;r.style.fontFamily="'"+S.rs.font+"',Georgia,serif";
+}
+function saveRS(){store('vc_reader',S.rs);applyReader()}
+var scrollT=null;
+function stopScroll(){if(scrollT){clearInterval(scrollT);scrollT=null}var b=$('#scrollBtn');if(b)b.textContent='▶ Cuộn tự động'}
+function startScroll(){
+  stopScroll();var b=$('#scrollBtn');if(b)b.textContent='❚❚ Dừng cuộn';
+  scrollT=setInterval(function(){
+    window.scrollBy(0,S.rs.speed*0.6+0.4);
+    var atEnd=(window.innerHeight+window.scrollY)>=document.documentElement.scrollHeight-4;
+    if(atEnd){var s=byId(S.arg);stopScroll();if(S.rs.autonext&&S.ch<s.ch.length-1){toast('Chuyển sang chương sau…');setTimeout(function(){go('read',S.arg,S.ch+1);startScroll()},900)}}
+  },30);
+}
+var ttsOn=false,ttsIdx=0;
+function stopTTS(){ttsOn=false;try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){}$$('#reader p.now').forEach(function(p){p.classList.remove('now')});var b=$('#ttsBtn');if(b)b.textContent='▶ Đọc to'}
+function startTTS(from){
+  if(!('speechSynthesis' in window)){toast('Thiết bị này chưa hỗ trợ đọc to');return}
+  stopTTS();var ps=$$('#reader p');if(!ps.length)return;
+  ttsOn=true;ttsIdx=from||0;$('#ttsBtn').textContent='❚❚ Dừng đọc';
+  (function next(){
+    if(!ttsOn)return;
+    if(ttsIdx>=ps.length){var s=byId(S.arg);stopTTS();if(S.rs.autonext&&S.ch<s.ch.length-1){go('read',S.arg,S.ch+1);setTimeout(function(){startTTS(0)},400)}return}
+    $$('#reader p.now').forEach(function(p){p.classList.remove('now')});
+    var p=ps[ttsIdx];p.classList.add('now');p.scrollIntoView({block:'center',behavior:'smooth'});
+    var u=new SpeechSynthesisUtterance(p.textContent);u.lang='vi-VN';u.rate=S.rs.rate;
+    u.onend=function(){ttsIdx++;next()};u.onerror=function(){stopTTS()};
+    try{speechSynthesis.speak(u)}catch(e){stopTTS()}
+  })();
+}
+function settingsHtml(){
+  var r=S.rs;
+  var sw=Object.keys(BGS).map(function(k){return '<button data-bg="'+k+'" aria-pressed="'+(r.bg===k)+'" aria-label="Nền '+k+'" style="background:'+BGS[k][0]+'"></button>'}).join('');
+  var fonts=['Literata','EB Garamond','Georgia','Be Vietnam Pro','Montserrat','Open Sans'];
+  return '<button class="x" data-close aria-label="Đóng">×</button><h2>Cài đặt đọc truyện</h2>'+
+   '<div class="setrow"><span>Màu nền</span><span class="sw">'+sw+'</span></div>'+
+   '<div class="setrow"><span>Cỡ chữ</span><span class="stepper"><button data-step="size:-1" aria-label="Giảm">−</button><b>'+r.size+'px</b><button data-step="size:1" aria-label="Tăng">+</button></span></div>'+
+   '<div class="setrow"><span>Phông chữ</span><select id="fontSel" style="width:auto">'+fonts.map(function(f){return '<option'+(f===r.font?' selected':'')+'>'+f+'</option>'}).join('')+'</select></div>'+
+   '<div class="setrow"><span>Giãn cách dòng</span><span class="stepper"><button data-step="lh:-0.1" aria-label="Giảm">−</button><b>'+r.lh.toFixed(1)+'×</b><button data-step="lh:0.1" aria-label="Tăng">+</button></span></div>'+
+   '<div class="setrow"><label for="spd">Tốc độ cuộn tự động</label><input id="spd" type="range" min="1" max="10" value="'+r.speed+'" style="width:140px"></div>'+
+   '<div class="setrow"><label for="rate">Tốc độ đọc to</label><input id="rate" type="range" min="0.6" max="1.8" step="0.1" value="'+r.rate+'" style="width:140px"></div>'+
+   '<div class="setrow"><label for="autonext">Tự động chuyển chương</label><input id="autonext" type="checkbox"'+(r.autonext?' checked':'')+'></div>'+
+   '<div style="text-align:right;margin-top:14px"><button class="btn" data-close>Xong ✓</button></div>';
+}
+
+/* ===== CỬA SỔ NỔI ===== */
+function open(id){var m=$('#'+id);m.hidden=false;return $('.sheet',m)}
+function closeAll(){$$('.modal').forEach(function(m){m.hidden=true})}
+function authHtml(tab){
+  var login=tab!=='reg';
+  return '<button class="x" data-close aria-label="Đóng">×</button><h2>Vườn Chữ</h2><p class="note" style="margin:0 0 10px">Đăng nhập hoặc tạo tài khoản học viên</p>'+
+   '<div class="tabs"><button data-tab="login" aria-pressed="'+login+'">Đăng nhập</button><button data-tab="reg" aria-pressed="'+!login+'">Đăng ký</button></div>'+
+   '<form id="authForm" data-mode="'+(login?'login':'reg')+'" autocomplete="off">'+
+   '<div class="field"><label for="fu">Tên đăng nhập'+(login?'':' (3–20 ký tự)')+'</label><input type="text" id="fu" required minlength="3" maxlength="20"></div>'+
+   (login?'':'<div class="field"><label for="fn">Tên hiển thị</label><input type="text" id="fn" maxlength="30"></div>')+
+   '<div class="field"><label for="fp">Mật khẩu'+(login?'':' (tối thiểu 6 ký tự)')+'</label><input type="password" id="fp" required minlength="6"></div>'+
+   (login?'':'<div class="field"><label for="fp2">Nhập lại mật khẩu</label><input type="password" id="fp2" required minlength="6"></div>')+
+   '<p class="note" id="ferr" style="color:var(--warn);min-height:1.2em"></p><button class="btn" type="submit" style="width:100%">'+(login?'Đăng nhập':'Đăng ký')+'</button>'+
+   '<p class="note" style="margin-top:10px">Tài khoản chỉ được lưu trong trình duyệt của bạn, không gửi đi đâu. Đừng dùng mật khẩu thật.</p></form>';
+}
+function matchStories(q){return !q?[]:STORIES.filter(function(s){return (s.title+' '+s.author+' '+s.tags.join(' ')).toLowerCase().indexOf(q)>-1})}
+function searchHtml(){
+  return '<button class="x" data-close aria-label="Đóng">×</button><h2>Tra cứu</h2><div class="field"><input type="search" id="sq" placeholder="Tên truyện, tác giả, thể loại…" aria-label="Tìm kiếm"></div><div id="sres">'+resHtml('',[])+'</div>';
+}
+function resHtml(q,res){
+  if(!q)return '<p class="note">Nhập tên truyện, tên tác giả hoặc thể loại để tìm.</p>';
+  if(!res.length)return '<p class="note">Không có kết quả cho “'+esc(q)+'”.</p>';
+  return res.map(function(s){return '<button class="item" data-story="'+esc(s.id)+'" style="display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px"><b>'+esc(s.title)+'</b><br><span class="note">'+esc(s.author)+' · '+esc(s.tags.join(', '))+'</span></button>'}).join('');
+}
+
+/* ===== SAO LƯU ===== */
+function exportText(){return JSON.stringify(STORIES,null,1)}
+function downloadJSON(){
+  try{
+    var blob=new Blob([exportText()],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='truyen.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+    toast('Đã tải truyen.json');
+  }catch(e){toast('Không tải được file, hãy dùng nút Sao chép dữ liệu')}
+}
+
+/* ===== SỰ KIỆN ===== */
+function openDrawer(){$('#rail').classList.add('open');$('#scrim').classList.add('open')}
+function closeDrawer(){$('#rail').classList.remove('open');$('#scrim').classList.remove('open')}
+function closePops(){$('#bellPop').hidden=true;var u=$('#userPop');if(u)u.hidden=true}
+
+document.addEventListener('click',function(e){
+  var t=e.target;
+  var el=t.closest('[data-go],[data-story],[data-edit],[data-del],[data-read],[data-nav],[data-rank],[data-act],[data-close],[data-tab],[data-bg],[data-step],#menuBtn,#scrim,#searchBtn,#bellBtn,#userBtn,#loginBtn,#heroLogin,#setBtn,#scrollBtn,#ttsBtn');
+  if(!el){closePops();if(t.classList.contains('modal'))closeAll();return}
+  var d=el.dataset;
+  if(!el.closest('.pop')&&el.id!=='bellBtn'&&el.id!=='userBtn')closePops();
+  if(el.id==='menuBtn')return openDrawer();
+  if(el.id==='scrim')return closeDrawer();
+  if(el.id==='searchBtn'){open('searchModal').innerHTML=searchHtml();setTimeout(function(){var i=$('#sq');i&&i.focus()},30);return}
+  if(el.id==='bellBtn'){var p=$('#bellPop');var was=p.hidden;closePops();p.hidden=!was;return}
+  if(el.id==='userBtn'){var u=$('#userPop');var w=u.hidden;closePops();u.hidden=!w;return}
+  if(el.id==='loginBtn'||el.id==='heroLogin'){open('authModal').innerHTML=authHtml(el.id==='heroLogin'?'reg':'login');return}
+  if(el.id==='setBtn'){open('settingsModal').innerHTML=settingsHtml();return}
+  if(el.id==='scrollBtn'){scrollT?stopScroll():startScroll();return}
+  if(el.id==='ttsBtn'){ttsOn?stopTTS():startTTS(0);return}
+  if('close' in d){closeAll();return}
+  if(d.tab){$('#authModal .sheet').innerHTML=authHtml(d.tab);return}
+  if(d.bg){S.rs.bg=d.bg;saveRS();$('#settingsModal .sheet').innerHTML=settingsHtml();return}
+  if(d.step){var a=d.step.split(':'),k=a[0],dv=parseFloat(a[1]);
+    if(k==='size')S.rs.size=Math.min(34,Math.max(14,S.rs.size+dv));
+    if(k==='lh')S.rs.lh=Math.min(3,Math.max(1.3,Math.round((S.rs.lh+dv)*10)/10));
+    saveRS();$('#settingsModal .sheet').innerHTML=settingsHtml();return}
+  if(d.edit!==undefined){closeAll();return go('edit',d.edit)}
+  if(d.del){
+    if(S.delArm===d.del){
+      STORIES=STORIES.filter(function(s){return s.id!==d.del});S.delArm=null;saveStories();toast('Đã xóa truyện');
+      var y0=window.scrollY;go('manage');window.scrollTo(0,y0);
+    }else{S.delArm=d.del;var y=window.scrollY;go('manage');window.scrollTo(0,y)}
+    return;
+  }
+  if(d.go){closeAll();return go(d.go)}
+  if(d.story){closeAll();return go('story',d.story)}
+  if(d.read!==undefined){return go('read',S.arg,parseInt(d.read,10))}
+  if(d.nav){return go('read',S.arg,S.ch+parseInt(d.nav,10))}
+  if(d.rank){S.rank=d.rank;return go('rank')}
+  if(d.act==='mute'){S.muted=!S.muted;renderBell();$('#bellPop').hidden=false;toast(S.muted?'Đã tắt tiếng thông báo':'Đã bật tiếng thông báo');return}
+  if(d.act==='readall'){S.noti.forEach(function(n){n.un=false});renderBell();$('#bellPop').hidden=false;return}
+  if(d.act==='logout'){S.user=null;unstore('vc_user');renderUser();toast('Đã đăng xuất');return}
+  if(d.act==='profile'){toast('Mục này chưa có');return}
+  if(d.act==='apply'){toast(S.user?'Đã ghi nhận đăng ký của bạn':'Hãy đăng nhập để đăng ký vị trí');return}
+  if(d.act==='export'){downloadJSON();return}
+  if(d.act==='copyjson'){
+    var txt=exportText();
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){toast('Đã sao chép dữ liệu')},function(){toast('Trình duyệt chặn sao chép, hãy dùng nút Tải truyen.json')})}
+    else toast('Trình duyệt chặn sao chép, hãy dùng nút Tải truyen.json');
+    return;
+  }
+  if(d.act==='resetlocal'){
+    if(S.delArm==='__reset'){unstore('vc_stories');STORIES=clone(BASE);S.delArm=null;toast('Đã bỏ bản sửa trên máy này');go('manage')}
+    else{S.delArm='__reset';go('manage')}
+    return;
+  }
+  if(d.act==='credits'){var sh=open('creditModal');sh.innerHTML='<button class="x" data-close aria-label="Đóng">×</button><h2 style="text-align:center;margin-bottom:12px">Bức tường ghi công</h2>'+CREDITS.map(function(c){return '<div style="text-align:center;margin:12px 0"><div class="note" style="text-transform:uppercase;letter-spacing:.1em">'+c[0]+'</div><div>'+c[1]+'</div></div>'}).join('')+'<p class="note" style="text-align:center">Thay các tên mẫu bằng danh sách của cộng đồng bạn.</p>';return}
+});
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.id==='sq'){var q=t.value.toLowerCase().trim();$('#sres').innerHTML=resHtml(q,matchStories(q))}
+  if(t.id==='spd'){S.rs.speed=parseInt(t.value,10);saveRS()}
+  if(t.id==='rate'){S.rs.rate=parseFloat(t.value);saveRS()}
+});
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='fontSel'){S.rs.font=t.value;saveRS()}
+  if(t.id==='autonext'){S.rs.autonext=t.checked;saveRS()}
+  if(t.id==='importFile'&&t.files&&t.files[0]){
+    var fr=new FileReader();
+    fr.onload=function(){
+      try{
+        var data=clean(JSON.parse(fr.result));
+        if(!data.length){toast('File không có truyện hợp lệ');return}
+        STORIES=data;saveStories();toast('Đã nhập '+data.length+' truyện');go('manage');
+      }catch(x){toast('File không đúng định dạng truyen.json')}
+    };
+    fr.readAsText(t.files[0]);
+  }
+});
+document.addEventListener('submit',function(e){
+  e.preventDefault();var f=e.target;
+  if(f.id==='editForm'){
+    var id=f.dataset.id,isNew=id==='new',s=isNew?null:byId(id);
+    var title=nfc($('#eTitle').value.trim()),sec=$('#eSec').value,err=$('#eErr');
+    if(!title){err.textContent='Hãy nhập tên truyện.';return}
+    var chs=parseChapters($('#eContent').value,sec);
+    if(!chs.length){err.textContent='Hãy nhập ít nhất một đoạn nội dung.';return}
+    if(isNew){s={id:'s'+Date.now().toString(36),hue:Math.floor(Math.random()*360),created:Date.now()};STORIES.push(s)}
+    s.title=title;s.author=nfc($('#eAuthor').value.trim());s.sec=sec;
+    s.tags=$('#eTags').value.split(',').map(function(x){return nfc(x.trim())}).filter(Boolean);
+    s.intro=nfc($('#eIntro').value.trim());s.ch=chs;
+    saveStories();toast(isNew?'Đã đăng truyện':'Đã lưu thay đổi');go('story',s.id);
+    return;
+  }
+  if(f.id==='chatForm'){
+    var i=$('#chatIn'),v=i.value.trim();if(!v)return;
+    S.chat.push({u:S.user?S.user.name:'Khách',m:v,c:S.user?162:30});
+    $('#chatList').insertAdjacentHTML('beforeend',msgHtml(S.chat[S.chat.length-1]));
+    i.value='';var l=$('#chatList');l.scrollTop=l.scrollHeight;return;
+  }
+  if(f.id==='authForm'){
+    var mode=f.dataset.mode,u=$('#fu').value.trim().toLowerCase(),p=$('#fp').value,er=$('#ferr');
+    var users=store('vc_users')||{};
+    if(mode==='reg'){
+      if(!/^[a-z0-9_]{3,20}$/.test(u)){er.textContent='Tên đăng nhập gồm chữ thường không dấu, số hoặc dấu gạch dưới, từ 3 đến 20 ký tự.';return}
+      if(p!==$('#fp2').value){er.textContent='Hai mật khẩu chưa giống nhau.';return}
+      if(users[u]){er.textContent='Tên đăng nhập này đã có người dùng. Hãy chọn tên khác.';return}
+      users[u]={p:p,name:$('#fn').value.trim()||u};store('vc_users',users);
+    }else{
+      if(!users[u]||users[u].p!==p){er.textContent='Tên đăng nhập hoặc mật khẩu chưa đúng. Nếu chưa có tài khoản, hãy chuyển sang tab Đăng ký.';return}
+    }
+    S.user={username:u,name:users[u].name};store('vc_user',S.user);
+    closeAll();renderUser();toast('Xin chào, '+S.user.name);if(S.route==='home')go('home');
+  }
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeAll();closePops();closeDrawer()}});
+
+/* ===== KHỞI ĐỘNG ===== */
+renderBell();renderUser();go('home');
+
+/* Đọc truyen.json (nếu có) cho người xem chưa có bản sửa riêng trên máy */
+try{
+  fetch('truyen.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(d){
+    if(!d)return;
+    BASE=clean(d);
+    if(!hasLocal()){
+      STORIES=clone(BASE);
+      if(['home','dai','ngan','rank','manage'].indexOf(S.route)>-1)go(S.route);
+    }
+  }).catch(function(){});
+}catch(e){}
+})();
+</script>
+</body>
+</html>
