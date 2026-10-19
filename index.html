@@ -116,8 +116,8 @@ main{min-width:0}
 .rank li{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px}
 .rank .no{font-family:var(--f-display);font-size:22px;color:var(--muted);text-align:center}
 .rank li:nth-child(-n+3) .no{color:var(--accent)}
-.rank .bar{height:6px;background:var(--soft);border-radius:9px;margin-top:6px;overflow:hidden}
-.rank .bar i{display:block;height:100%;background:var(--accent);border-radius:9px}
+.rank .bar{height:6px;background:var(--soft);border-radius:99px;margin-top:6px;overflow:hidden}
+.rank .bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
 .rank .num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
 .tabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}
 .tabs button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 14px}
@@ -204,7 +204,7 @@ footer a,footer button{color:var(--accent);background:none;border:0;padding:0;te
   var err = document.getElementById('gateErr');
 
   if(localStorage.getItem('vc_unlocked') === 'true') {
-    gate.style.display = 'none'; 
+    if(gate) gate.style.display = 'none'; 
   } else {
     document.body.style.overflow = 'hidden';
   }
@@ -218,7 +218,7 @@ footer a,footer button{color:var(--accent);background:none;border:0;padding:0;te
     var userHash = await sha256(keyInp.value.trim());
     if(userHash === HASH_KEY) {
       localStorage.setItem('vc_unlocked', 'true');
-      gate.style.display = 'none';
+      if(gate) gate.style.display = 'none';
       document.body.style.overflow = '';
     } else {
       err.textContent = 'Mã truy cập không đúng!';
@@ -227,8 +227,8 @@ footer a,footer button{color:var(--accent);background:none;border:0;padding:0;te
     }
   }
 
-  btn.addEventListener('click', checkKey);
-  keyInp.addEventListener('keyup', function(e) {
+  if(btn) btn.addEventListener('click', checkKey);
+  if(keyInp) keyInp.addEventListener('keyup', function(e) {
     if(e.key === 'Enter') checkKey();
   });
 
@@ -279,8 +279,8 @@ function store(k,v){try{if(v===undefined){var r=localStorage.getItem(k);return r
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
 function unstore(k){try{localStorage.removeItem(k)}catch(e){}}
 var toastT;
-function toast(t,sticky){var el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);if(!sticky)toastT=setTimeout(function(){el.hidden=true},Math.max(2600,Math.min(9000,t.length*70)))}
-function hideToast(){clearTimeout(toastT);$('#toast').hidden=true}
+function toast(t,sticky){var el=$('#toast');if(!el)return;el.textContent=t;el.hidden=false;clearTimeout(toastT);if(!sticky)toastT=setTimeout(function(){el.hidden=true},Math.max(2600,Math.min(9000,t.length*70)))}
+function hideToast(){clearTimeout(toastT);var el=$('#toast');if(el)el.hidden=true}
 function clone(x){return JSON.parse(JSON.stringify(x))}
 function nfc(s){return String(s).normalize('NFC')}
 function fmtDate(t){return t?new Date(t).toLocaleDateString('vi-VN'):''}
@@ -361,24 +361,35 @@ var THEORY=[
 ];
 var CREDITS=[['Người sáng lập','Madege'],['Thiết kế & lập trình','Chuchuu']];
 
-/* ===== TRẠNG THÁI ===== */
-var S={route:'home',arg:null,ch:0,user:store('vc_user'),rank:'new',delArm:null,draft:null,offline:'wait',
+/* ===== BẢO VỆ KHỞI TẠO DỮ LIỆU ===== */
+var rawUser = store('vc_user');
+var rawNoti = store('vc_noti');
+var rawFollows = store('vc_follows');
+var rawChat = store('vc_chat');
+
+var S={
+  route:'home',arg:null,ch:0,
+  user:(rawUser && typeof rawUser === 'object') ? rawUser : null,
+  rank:'new',delArm:null,draft:null,offline:'wait',
   rs:Object.assign({bg:'paper',size:21,font:'Literata',lh:2,speed:3,rate:1,autonext:true},store('vc_reader')||{}),
-  noti:store('vc_noti')||NOTI.slice(),muted:false,
-  follows:store('vc_follows')||{},
-  chat:store('vc_chat')||[{u:'Quản trị viên',m:'Chào mừng mọi người đến với Sảnh Trò Chuyện!',c:162}]};
+  noti:Array.isArray(rawNoti) ? rawNoti : NOTI.slice(),
+  muted:false,
+  follows:(rawFollows && typeof rawFollows === 'object') ? rawFollows : {},
+  chat:Array.isArray(rawChat) ? rawChat : [{u:'Quản trị viên',m:'Chào mừng mọi người đến với Sảnh Trò Chuyện!',c:162}]
+};
 var BGS={paper:['#FFFFFF','#222B27'],sepia:['#F3EAD3','#3B3224'],grey:['#D9DDDA','#1E2421'],night:['#10151A','#C9D3D8']};
 
 /* ===== KHUNG TRANG ===== */
 function renderRail(){
-  $('#rail').innerHTML=NAV.map(function(n){
+  var rail = $('#rail'); if(!rail) return;
+  rail.innerHTML=NAV.map(function(n){
     if(n.g)return '<div class="grp">'+n.g+'</div>';
     var cur=S.route===n.id||((S.route==='story'||S.route==='read'||S.route==='edit')&&S.arg&&byId(S.arg)&&byId(S.arg).sec===n.id);
     return '<button data-go="'+n.id+'"'+(cur?' aria-current="page"':'')+'><span aria-hidden="true">'+n.ic+'</span>'+n.label+'</button>';
   }).join('');
 }
 function renderUser(){
-  var s=$('#userSlot');
+  var s=$('#userSlot'); if(!s) return;
   if(!S.user){s.innerHTML='<button class="btn sm" id="loginBtn">Đăng nhập</button>';return}
   var avHtml = S.user.avatar ? '<img src="'+esc(S.user.avatar)+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover">' : '<span class="av" style="width:26px;height:26px;font-size:12px;background:var(--accent);color:var(--accent-ink)">'+esc(S.user.name.charAt(0).toUpperCase())+'</span>';
   s.innerHTML='<button class="iconbtn" id="userBtn" aria-label="Tài khoản">'+avHtml+'</button>'+
@@ -386,9 +397,11 @@ function renderUser(){
    '<button class="item" data-act="profile">Hồ sơ cá nhân</button><button class="item" data-go="tu-truyen">Tủ truyện cá nhân</button><button class="item" data-go="manage">Quản lý truyện</button><button class="item" data-act="logout">Đăng xuất</button></div>';
 }
 function renderBell(){
+  var b=$('#bellBadge'); if(!b) return;
   var un=S.noti.filter(function(n){return n.un}).length;
-  var b=$('#bellBadge');b.textContent=un;b.hidden=!un||S.muted;
-  $('#bellPop').innerHTML='<div class="row" style="justify-content:space-between;margin:2px 4px 8px"><b>Thông báo</b><span class="row"><button class="btn ghost sm" data-act="mute">'+(S.muted?'Bật tiếng':'Tắt tiếng')+'</button><button class="btn ghost sm" data-act="readall">Đánh dấu đã đọc</button></span></div>'+
+  b.textContent=un;b.hidden=!un||S.muted;
+  var bellPop = $('#bellPop'); if(!bellPop) return;
+  bellPop.innerHTML='<div class="row" style="justify-content:space-between;margin:2px 4px 8px"><b>Thông báo</b><span class="row"><button class="btn ghost sm" data-act="mute">'+(S.muted?'Bật tiếng':'Tắt tiếng')+'</button><button class="btn ghost sm" data-act="readall">Đánh dấu đã đọc</button></span></div>'+
    S.noti.slice().reverse().map(function(n){return '<div class="nitem'+(n.un?' un':'')+'"'+(n.link?' data-story="'+n.link+'" style="cursor:pointer"':'')+'>'+esc(n.t)+'</div>'}).join('');
 }
 function cover(s){return '<div class="cover" style="background:linear-gradient(155deg,hsl('+s.hue+' 45% 38%),hsl('+(s.hue+40)+' 50% 22%))">'+esc(s.title.charAt(0))+'<small>'+(s.sec==='dai'?'Truyện dài':'Truyện ngắn')+'</small></div>'}
@@ -595,7 +608,8 @@ function go(route,arg,ch){
   }
   if(route!=='manage')S.delArm=null;
   S.route=route;S.arg=arg||null;S.ch=ch||0;
-  $('#view').innerHTML=V[route]()+footer();
+  var view = $('#view');
+  if(view) view.innerHTML=V[route]()+footer();
   renderRail();closeDrawer();window.scrollTo(0,0);
   if(route==='read')applyReader();
 }
@@ -650,7 +664,7 @@ function settingsHtml(){
 }
 
 /* ===== CỬA SỔ NỔI ===== */
-function open(id){var m=$('#'+id);m.hidden=false;return $('.sheet',m)}
+function open(id){var m=$('#'+id);if(!m)return null;m.hidden=false;return $('.sheet',m)}
 function closeAll(){$$('.modal').forEach(function(m){m.hidden=true})}
 function authHtml(tab){
   var login=tab!=='reg';
@@ -996,7 +1010,7 @@ function splitLong(chs){
 function parseFile(file){
   if(file.size>60*1024*1024)return Promise.reject(new Error('File quá lớn (trên 60 MB)'));
   return file.arrayBuffer().then(function(buf){
-    var u=new Uint8Array(buf),name=file.name||'truyen',ext=((name.match(/\.([^.]+)$/)\vert{}\vert{}[])[1]\vert{}\vert{}'').toLowerCase(),base=name.replace(/\.[^.]+$/,'');
+    var u=new Uint8Array(buf),name=file.name||'truyen',ext=((name.match(/\.([^.]+)$/)||[])[1]||'').toLowerCase(),base=name.replace(/\.[^.]+$/,'');
     var isZip=u[0]===0x50&&u[1]===0x4B,isPdf=u[0]===0x25&&u[1]===0x50&&u[2]===0x44&&u[3]===0x46,res;
     if(isPdf)res=parsePdf(buf);
     else if(isZip){
@@ -1071,3 +1085,287 @@ function fillFromFile(file){
   parseFile(file).then(function(r){
     hideToast();
     if(r.library){toast('File này là dữ liệu thư viện (.json). Hãy nhập ở trang Quản lý truyện.');return}
+    var c=$('#eContent');if(!c)return;
+    c.value=toRaw({ch:r.chapters});
+    if(!$('#eTitle').value.trim())$('#eTitle').value=r.title;
+    if(!$('#eAuthor').value.trim())$('#eAuthor').value=r.author;
+    toast('Đã lấy nội dung từ file ('+r.chapters.length+' chương)');
+  }).catch(function(e){hideToast();toast((e&&e.message)||'Không đọc được file')});
+}
+
+/* ===== SỰ KIỆN ===== */
+function openDrawer(){var r=$('#rail'),s=$('#scrim'); if(r)r.classList.add('open'); if(s)s.classList.add('open');}
+function closeDrawer(){var r=$('#rail'),s=$('#scrim'); if(r)r.classList.remove('open'); if(s)s.classList.remove('open');}
+function closePops(){var b=$('#bellPop'),u=$('#userPop'); if(b)b.hidden=true; if(u)u.hidden=true;}
+
+document.addEventListener('click',function(e){
+  var t=e.target;
+  var el=t.closest('[data-go],[data-story],[data-edit],[data-del],[data-dl],[data-read],[data-nav],[data-rank],[data-act],[data-close],[data-tab],[data-bg],[data-step],#menuBtn,#scrim,#searchBtn,#bellBtn,#userBtn,#loginBtn,#heroLogin,#setBtn,#scrollBtn,#ttsBtn');
+  if(!el){closePops();if(t.classList.contains('modal'))closeAll();return}
+  var d=el.dataset;
+  if(!el.closest('.pop')&&el.id!=='bellBtn'&&el.id!=='userBtn')closePops();
+  if(el.id==='menuBtn')return openDrawer();
+  if(el.id==='scrim')return closeDrawer();
+  if(el.id==='searchBtn'){open('searchModal').innerHTML=searchHtml();setTimeout(function(){var i=$('#sq');i&&i.focus()},30);return}
+  if(el.id==='bellBtn'){var p=$('#bellPop');if(!p)return;var was=p.hidden;closePops();p.hidden=!was;return}
+  if(el.id==='userBtn'){var u=$('#userPop');if(!u)return;var w=u.hidden;closePops();u.hidden=!w;return}
+  if(el.id==='loginBtn'||el.id==='heroLogin'){open('authModal').innerHTML=authHtml(el.id==='heroLogin'?'reg':'login');return}
+  if(el.id==='setBtn'){open('settingsModal').innerHTML=settingsHtml();return}
+  if(el.id==='scrollBtn'){scrollT?stopScroll():startScroll();return}
+  if(el.id==='ttsBtn'){ttsOn?stopTTS():startTTS(0);return}
+  if('close' in d){closeAll();return}
+  if(d.tab){var am=$('#authModal .sheet'); if(am)am.innerHTML=authHtml(d.tab);return}
+  if(d.bg){S.rs.bg=d.bg;saveRS();var sm=$('#settingsModal .sheet'); if(sm)sm.innerHTML=settingsHtml();return}
+  if(d.step){var a=d.step.split(':'),k=a[0],dv=parseFloat(a[1]);
+    if(k==='size')S.rs.size=Math.min(34,Math.max(14,S.rs.size+dv));
+    if(k==='lh')S.rs.lh=Math.min(3,Math.max(1.3,Math.round((S.rs.lh+dv)*10)/10));
+    saveRS();var sm=$('#settingsModal .sheet'); if(sm)sm.innerHTML=settingsHtml();return}
+  if(d.dl){var q=d.dl.split(':');download(q[0],q.slice(1).join(':'));return}
+  if(d.edit!==undefined){closeAll();return go('edit',d.edit)}
+  if(d.del){
+    var y=window.scrollY;
+    if(S.delArm===d.del){STORIES=STORIES.filter(function(s){return s.id!==d.del});S.delArm=null;saveStories();toast('Đã xóa truyện')}
+    else S.delArm=d.del;
+    go('manage');window.scrollTo(0,y);
+    return;
+  }
+
+  if(d.go){closeAll();return go(d.go)}
+  if(d.story){closeAll();return go('story',d.story)}
+  if(d.read!==undefined){
+    if(S.follows[S.arg] !== undefined){
+      var curS = byId(S.arg);
+      if(curS) { S.follows[S.arg] = curS.ch.length; store('vc_follows', S.follows); }
+    }
+    return go('read',S.arg,parseInt(d.read,10));
+  }
+  if(d.nav){return go('read',S.arg,S.ch+parseInt(d.nav,10))}
+  if(d.rank){S.rank=d.rank;return go('rank')}
+
+  if(d.act==='follow'){
+    var fid = d.id;
+    if(S.follows[fid] !== undefined){
+      delete S.follows[fid]; toast('Đã bỏ theo dõi');
+    } else {
+      var fs = byId(fid);
+      S.follows[fid] = fs ? fs.ch.length : 0; toast('Đã thêm vào tủ truyện');
+    }
+    store('vc_follows', S.follows);
+    go('story', fid);
+    return;
+  }
+
+  if(d.act==='mute'){S.muted=!S.muted;renderBell();var bp=$('#bellPop');if(bp)bp.hidden=false;toast(S.muted?'Đã tắt tiếng thông báo':'Đã bật tiếng thông báo');return}
+  if(d.act==='readall'){S.noti.forEach(function(n){n.un=false});saveNoti();var bp=$('#bellPop');if(bp)bp.hidden=false;return}
+  if(d.act==='logout'){S.user=null;unstore('vc_user');renderUser();toast('Đã đăng xuất');return}
+  if(d.act==='clearhistory'){
+    unstore('vc_history');
+    toast('Đã xóa lịch sử đọc');
+    go('profile');
+    return;
+  }
+  if(d.act==='profile'){
+    go('profile');
+    return;
+  }
+  if(d.act==='apply'){toast(S.user?'Đã ghi nhận đăng ký của bạn':'Hãy đăng nhập để đăng ký vị trí');return}
+  if(d.act==='export'){
+    try{saveBlob(new Blob([exportText()],{type:'application/json'}),'truyen.json');toast('Đã tải truyen.json')}
+    catch(x){toast('Không tải được file, hãy dùng nút Sao chép dữ liệu')}
+    return;
+  }
+  if(d.act==='copyjson'){
+    var txt=exportText();
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){toast('Đã sao chép dữ liệu')},function(){toast('Trình duyệt chặn sao chép, hãy dùng nút Tải truyen.json')})}
+    else toast('Trình duyệt chặn sao chép, hãy dùng nút Tải truyen.json');
+    return;
+  }
+  if(d.act==='resetlocal'){
+    if(S.delArm==='__reset'){kvDel('stories');HAS_LOCAL=false;STORIES=clone(BASE);S.delArm=null;toast('Đã bỏ bản sửa trên máy này');go('manage')}
+    else{S.delArm='__reset';go('manage')}
+    return;
+  }
+  if(d.act==='credits'){var sh=open('creditModal');if(sh)sh.innerHTML='<button class="x" data-close aria-label="Đóng">×</button><h2 style="text-align:center;margin-bottom:12px">Bức tường ghi công</h2>'+CREDITS.map(function(c){return '<div style="text-align:center;margin:12px 0"><div class="note" style="text-transform:uppercase;letter-spacing:.1em">'+c[0]+'</div><div>'+c[1]+'</div></div>'}).join('')+'<p class="note" style="text-align:center">Thay các tên mẫu bằng danh sách của cộng đồng bạn.</p>';return}
+});
+
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.id==='sq'){var q=t.value.toLowerCase().trim();var sr=$('#sres'); if(sr)sr.innerHTML=resHtml(q,matchStories(q))}
+  if(t.id==='spd'){S.rs.speed=parseInt(t.value,10);saveRS()}
+  if(t.id==='rate'){S.rs.rate=parseFloat(t.value);saveRS()}
+});
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='fontSel'){S.rs.font=t.value;saveRS()}
+  if(t.id==='autonext'){S.rs.autonext=t.checked;saveRS()}
+  if(t.id==='uploadFiles'){var fl=t.files;uploadFiles(fl);}
+  if(t.id==='fillFile'){fillFromFile(t.files&&t.files[0])}
+});
+document.addEventListener('dragover',function(e){
+  if(!e.dataTransfer||Array.prototype.indexOf.call(e.dataTransfer.types||[],'Files')<0)return;
+  e.preventDefault();var z=$('#dropZone');if(z&&S.route==='manage')z.classList.add('over');
+});
+document.addEventListener('dragleave',function(e){var z=$('#dropZone');if(z&&!e.relatedTarget)z.classList.remove('over')});
+document.addEventListener('drop',function(e){
+  if(!e.dataTransfer||!e.dataTransfer.files||!e.dataTransfer.files.length)return;
+  e.preventDefault();var z=$('#dropZone');if(z)z.classList.remove('over');
+  if(S.route==='manage')uploadFiles(e.dataTransfer.files);
+  else toast('Hãy mở trang Quản lý truyện rồi thả file vào đó');
+});
+
+document.addEventListener('submit',function(e){
+  e.preventDefault();var f=e.target;
+  if(f.id==='editForm'){
+    var id=f.dataset.id,isNew=id==='new',s=isNew?null:byId(id);
+    var title=nfc($('#eTitle').value.trim()),sec=$('#eSec').value,err=$('#eErr');
+    if(!title){if(err)err.textContent='Hãy nhập tên truyện.';return}
+    var chs=parseChapters($('#eContent').value,sec);
+    if(!chs.length){if(err)err.textContent='Hãy nhập ít nhất một đoạn nội dung.';return}
+    if(isNew){s={id:uid(),hue:Math.floor(Math.random()*360),created:Date.now()};STORIES.push(s)}
+    s.title=title;s.author=nfc($('#eAuthor').value.trim());s.sec=sec;
+    s.tags=$('#eTags').value.split(',').map(function(x){return nfc(x.trim())}).filter(Boolean);
+    s.intro=nfc($('#eIntro').value.trim());s.ch=chs;
+    saveStories();toast(isNew?'Đã đăng truyện':'Đã lưu thay đổi');go('story',s.id);
+    return;
+  }
+  if(f.id==='chatForm'){
+    var i=$('#chatIn'),v=i.value.trim();if(!v)return;
+    S.chat.push({u:S.user?S.user.name:'Khách',m:v,c:S.user?162:30});
+    store('vc_chat', S.chat);
+    var cl=$('#chatList'); if(cl){cl.insertAdjacentHTML('beforeend',msgHtml(S.chat[S.chat.length-1])); cl.scrollTop=cl.scrollHeight;}
+    i.value='';return;
+  }
+  if(f.id==='authForm'){
+    var mode=f.dataset.mode,u=$('#fu').value.trim().toLowerCase(),p=$('#fp').value,er=$('#ferr');
+    var users=store('vc_users')||{};
+    if(mode==='reg'){
+      if(!/^[a-z0-9_]{3,20}$/.test(u)){if(er)er.textContent='Tên đăng nhập gồm chữ thường không dấu, số hoặc dấu gạch dưới, từ 3 đến 20 ký tự.';return}
+      if(p!==$('#fp2').value){if(er)er.textContent='Hai mật khẩu chưa giống nhau.';return}
+      if(users[u]){if(er)er.textContent='Tên đăng nhập này đã có người dùng. Hãy chọn tên khác.';return}
+      users[u]={p:p,name:$('#fn').value.trim()||u};store('vc_users',users);
+    }else{
+      if(!users[u]||users[u].p!==p){if(er)er.textContent='Tên đăng nhập hoặc mật khẩu chưa đúng. Nếu chưa có tài khoản, hãy chuyển sang tab Đăng ký.';return}
+    }
+    S.user={username:u,name:users[u].name};store('vc_user',S.user);
+    closeAll();renderUser();toast('Xin chào, '+S.user.name);if(S.route==='home')go('home');
+  }
+  if(f.id==='profileForm'){
+    var newName = $('#pName').value.trim();
+    var newAv = $('#pAv').value.trim();
+    if(newName && S.user){
+      S.user.name = newName;
+      S.user.avatar = newAv;
+      store('vc_user', S.user);
+      
+      var users = store('vc_users') || {};
+      if(users[S.user.username]){
+        users[S.user.username].name = newName;
+        users[S.user.username].avatar = newAv;
+        store('vc_users', users);
+      }
+      
+      renderUser();
+      toast('Đã cập nhật hồ sơ cá nhân');
+      go('profile');
+    }
+    return;
+  }
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeAll();closePops();closeDrawer()}});
+window.addEventListener('offline',function(){toast('Bạn đang offline. Truyện đã lưu vẫn đọc được.')});
+window.addEventListener('online',function(){toast('Đã có mạng trở lại.')});
+
+/* ===== BỘ KIỂM TRA CẬP NHẬT THEO THỜI GIAN THỰC ===== */
+function checkRealtimeUpdates(){
+  if(!/^https?:$/.test(location.protocol)) return;
+  fetch('truyen.json', {cache: 'no-store'}).then(function(r){
+    return r.ok ? r.json() : null;
+  }).then(function(d){
+    if(!d) return;
+    var fresh = clean(d);
+    var updated = false;
+    fresh.forEach(function(fs){
+      var exIdx = -1;
+      STORIES.forEach(function(item, idx){ if(item.id === fs.id) exIdx = idx; });
+      if(exIdx > -1){
+        if(fs.ch.length > STORIES[exIdx].ch.length){
+          STORIES[exIdx] = fs;
+          updated = true;
+          if(S.follows[fs.id] !== undefined && fs.ch.length > S.follows[fs.id]){
+            S.follows[fs.id] = fs.ch.length;
+            S.noti.unshift({id: Date.now(), t: 'Truyện "' + fs.title + '" vừa cập nhật chương mới!', un: true, link: fs.id});
+            toast('🔔 Truyện "' + fs.title + '" vừa có chương mới!');
+          }
+        }
+      } else {
+        STORIES.push(fs);
+        updated = true;
+      }
+    });
+    if(updated){
+      saveStories();
+      store('vc_follows', S.follows);
+      saveNoti();
+      if(['home','dai','ngan','rank','manage','tu-truyen'].indexOf(S.route) > -1){
+        var y0 = window.scrollY;
+        go(S.route, S.arg, S.ch);
+        window.scrollTo(0, y0);
+      }
+    }
+  }).catch(function(){});
+}
+
+setInterval(checkRealtimeUpdates, 15000);
+
+/* ===== OFFLINE (service worker) ===== */
+function setOffline(st){S.offline=st;var el=$('#offState');if(el)el.textContent=offText()}
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.register('sw.js').then(function(){return navigator.serviceWorker.ready}).then(function(){setOffline('ready')}).catch(function(){setOffline('no')});
+}else setOffline('no');
+
+/* ===== KHỞI ĐỘNG VẼ GIAO DIỆN LẬP TỨC ===== */
+function loadLocal(){
+  var t=new Promise(function(r){setTimeout(r,1200)});
+  return Promise.race([kvGet('stories').then(function(v){
+    if(Array.isArray(v)){STORIES=clean(v);HAS_LOCAL=true;return}
+    var old=store('vc_stories');
+    if(Array.isArray(old)){STORIES=clean(old);saveStories().then(function(){unstore('vc_stories')})}
+  }).catch(function(){}),t]);
+}
+function loadBase(){
+  return new Promise(function(res){
+    var done=false;function fin(d){if(!done){done=true;res(d)}}
+    setTimeout(function(){fin(null)},2000);
+    try{fetch('truyen.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(fin).catch(function(){fin(null)})}catch(e){fin(null)}
+  });
+}
+function setBase(d){
+  if(d){
+    BASE=clean(d);
+    if(!HAS_LOCAL)STORIES=clone(BASE);
+  }
+}
+
+// Render giao diện lập tức không để màn hình chờ
+renderBell();
+renderUser();
+renderRail();
+go('home');
+
+// Tải dữ liệu ngầm và làm mới danh sách khi tải xong
+loadLocal().then(function(){
+  if(HAS_LOCAL){
+    go(S.route, S.arg, S.ch);
+    loadBase().then(setBase);
+  } else {
+    loadBase().then(function(d){
+      setBase(d);
+      go(S.route, S.arg, S.ch);
+    });
+  }
+});
+
+})();
+</script>
+</body>
+</html>
