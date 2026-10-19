@@ -622,5 +622,18 @@ try{
 }catch(e){}
 })();
 </script>
+<!-- KHÚC CUỐI CỦA FILE INDEX.HTML -->
+<script>
+// Kích hoạt chế độ Offline (Service Worker)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js').then(function() {
+      console.log('Đã kích hoạt chế độ đọc Offline!');
+    }).catch(function(err) {
+      console.log('Lỗi kích hoạt Offline: ', err);
+    });
+  });
+}
+</script>
 </body>
 </html>
