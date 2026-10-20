@@ -184,12 +184,12 @@ footer a,footer button{color:var(--accent);background:none;border:0;padding:0;te
 </head>
 <body>
 
-<!-- ===== BỨC TƯỜNG BẢO VỆ (MÃ HÓA SHA-256 + CHẶN F12) ===== -->
+<!-- ===== BỨC TƯỜNG BẢO VỆ (MÃ HÓA SHA-256 + TỰ ĐỘNG BỎ DẤU TELEX + CHẶN F12) ===== -->
 <div id="gatekeeper" style="position:fixed;inset:0;z-index:9999999;background:var(--bg,#F4F7F4);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--surface,#FFF);padding:32px;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.15);text-align:center;max-width:400px;width:100%;border:1px solid var(--line,#D9E3DD);">
     <h1 style="font-family:var(--f-display,'Playfair Display',serif);margin:0 0 8px;font-size:28px;color:var(--ink,#1B2924);">Vườn Chữ Riêng Tư</h1>
     <p style="color:var(--muted,#5A6B65);margin-bottom:24px;font-size:14.5px;">Web đang trong chế độ hạn chế. Vui lòng nhập mã truy cập (Key) để vào.</p>
-    <input type="password" id="gateKey" placeholder="Nhập mã truy cập..." style="width:100%;padding:12px 14px;border:1px solid var(--line,#D9E3DD);border-radius:10px;margin-bottom:8px;box-sizing:border-box;font-family:inherit;font-size:15px;background:var(--surface,#FFF);color:var(--ink,#1B2924);">
+    <input type="password" id="gateKey" placeholder="Nhập mã truy cập..." autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:12px 14px;border:1px solid var(--line,#D9E3DD);border-radius:10px;margin-bottom:8px;box-sizing:border-box;font-family:inherit;font-size:15px;background:var(--surface,#FFF);color:var(--ink,#1B2924);">
     <p id="gateErr" style="color:var(--warn,#B4531E);font-size:13px;margin:0 0 16px;min-height:18px;"></p>
     <button id="gateBtn" style="width:100%;padding:12px;background:var(--accent,#1D6B58);color:#FFF;border:none;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer;font-family:inherit;">Mở Khóa</button>
   </div>
@@ -197,7 +197,7 @@ footer a,footer button{color:var(--accent);background:none;border:0;padding:0;te
 
 <script>
 (function(){
-  var HASH_KEY = "efdf86beec71d2b826b5bc93c0bc5e8a5b9911e35a9bd084b63e5b3f115e5132"; // Key: vuonchu2026
+  var HASH_KEY = "efdf86beec71d2b826b5bc93c0bc5e8a5b9911e35a9bd084b63e5b3f115e5132"; // Mã SHA-256 chuẩn của: vuonchu2026
   var gate = document.getElementById('gatekeeper');
   var keyInp = document.getElementById('gateKey');
   var btn = document.getElementById('gateBtn');
@@ -215,7 +215,12 @@ footer a,footer button{color:var(--accent);background:none;border:0;padding:0;te
   }
 
   async function checkKey() {
-    var userHash = await sha256(keyInp.value.trim());
+    // Tự động chuyển về chữ thường và lọc bỏ sạch dấu tiếng Việt do Telex tạo ra trước khi hash
+    var cleanInput = keyInp.value.trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+
+    var userHash = await sha256(cleanInput);
+
     if(userHash === HASH_KEY) {
       localStorage.setItem('vc_unlocked', 'true');
       if(gate) gate.style.display = 'none';
