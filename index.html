@@ -1414,5 +1414,178 @@ loadLocal().then(function(){
   setLink('apple-touch-icon',LOGO_L);
 })();
 </script>
+  <script>
+    /* ===== ADD-ON: CÀI ỨNG DỤNG + THÔNG BÁO ĐĂNG TRUYỆN =====
+   Cách dùng: bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html.
+   Cần có cùng thư mục: manifest.webmanifest, sw.js, icon-192.png, icon-512.png (trang phải chạy bằng https). */
+(function(){
+'use strict';
+if(window.__vcApp)return;window.__vcApp=1;
+
+/* ---------- tiện ích ---------- */
+function lsGet(k){try{var r=localStorage.getItem(k);return r?JSON.parse(r):null}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function $(s){return document.querySelector(s)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function iconUrl(){var l=document.querySelector('link[rel="apple-touch-icon"]')||document.querySelector('link[rel="icon"]');return (l&&l.href)||'icon-192.png'}
+function unlocked(){var g=document.getElementById('gatekeeper');return !g||getComputedStyle(g).display==='none'}
+function whenUnlocked(fn){if(unlocked())return fn();var t=setInterval(function(){if(unlocked()){clearInterval(t);fn()}},600)}
+function clickData(attr,val){var b=document.createElement('button');b.setAttribute(attr,val);b.style.display='none';document.body.appendChild(b);b.click();document.body.removeChild(b)}
+
+/* ---------- manifest + service worker (nếu trang chưa có) ---------- */
+if(!$('link[rel="manifest"]')){var ml=document.createElement('link');ml.rel='manifest';ml.href='manifest.webmanifest';document.head.appendChild(ml)}
+var swReg=null;
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.register('sw.js').then(function(r){swReg=r}).catch(function(){});
+}
+
+/* ---------- giao diện ---------- */
+var css=document.createElement('style');
+css.textContent=
+ '.vcx{position:fixed;left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 24px));z-index:99990;display:grid;gap:10px;'+
+   'padding:14px 16px;border-radius:16px;background:var(--surface,#fff);color:var(--ink,#1B2924);border:1px solid var(--line,#D9E3DD);'+
+   'box-shadow:0 10px 34px rgba(0,0,0,.22);font:14px/1.5 var(--f-ui,system-ui,sans-serif);animation:vcxin .25s ease-out}'+
+ '.vcx.bot{bottom:max(14px,env(safe-area-inset-bottom,0px))}.vcx.top{top:72px}'+
+ '@keyframes vcxin{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}'+
+ '.vcx b{font-weight:600}.vcx p{margin:0;color:var(--muted,#5A6B65);font-size:13px}'+
+ '.vcx .r{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.vcx .h{display:flex;gap:12px;align-items:center}'+
+ '.vcx img.ic{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none}'+
+ '.vcx button{font:inherit;cursor:pointer;border-radius:10px;padding:8px 14px;border:1px solid var(--line,#D9E3DD);background:transparent;color:inherit}'+
+ '.vcx button.p{background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);border-color:transparent;font-weight:600}'+
+ '.vcx .x{position:absolute;right:8px;top:6px;border:0;padding:4px 9px;font-size:18px;line-height:1;color:var(--muted,#5A6B65)}';
+document.head.appendChild(css);
+
+function card(pos,key,html,autoMs){
+  var old=document.getElementById('vcx-'+key);if(old)old.remove();
+  var d=document.createElement('div');d.id='vcx-'+key;d.className='vcx '+pos;d.setAttribute('role','status');
+  d.innerHTML='<button class="x" data-k="close" aria-label="Đóng">×</button>'+html;
+  d.addEventListener('click',function(e){
+    var t=e.target.closest('button');if(!t)return;
+    var k=t.getAttribute('data-k');
+    if(k==='close'){d.remove();if(card.onclose&&card.onclose[key])card.onclose[key]()}
+    else if(card.act)card.act(k,t,d);
+    e.stopPropagation();
+  });
+  document.body.appendChild(d);
+  if(autoMs)setTimeout(function(){if(d.parentNode)d.remove()},autoMs);
+  return d;
+}
+card.onclose={};
+
+/* ---------- 1. CÀI ỨNG DỤNG ---------- */
+var dp=null,DAY=86400000;
+function standalone(){return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true}
+function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}
+function inAppBrowser(){return /FBAN|FBAV|Zalo|Instagram|Line\/|Messenger|MicroMessenger/i.test(navigator.userAgent)}
+function installDismissed(){var t=lsGet('vcx_inst_off');return t&&Date.now()-t<7*DAY}
+function showInstall(){
+  if(standalone()||installDismissed()||document.getElementById('vcx-inst'))return;
+  whenUnlocked(function(){
+    var body;
+    if(dp)body='<div class="h"><img class="ic" src="'+esc(iconUrl())+'" alt=""><div><b>Cài Vườn Chữ lên máy</b><p>Mở nhanh từ màn hình chính và đọc được cả khi không có mạng.</p></div></div><div class="r"><button class="p" data-k="install">Cài đặt</button><button data-k="later">Để sau</button></div>';
+    else if(inAppBrowser())body='<div class="h"><img class="ic" src="'+esc(iconUrl())+'" alt=""><div><b>Muốn cài ứng dụng?</b><p>Hãy mở trang này bằng Chrome hoặc Safari (bấm ⋮ rồi chọn “Mở bằng trình duyệt”), sau đó cài đặt.</p></div></div><div class="r"><button data-k="later">Đã hiểu</button></div>';
+    else if(isIOS())body='<div class="h"><img class="ic" src="'+esc(iconUrl())+'" alt=""><div><b>Cài Vườn Chữ lên iPhone</b><p>Bấm nút Chia sẻ <b>⬆</b> của Safari, chọn <b>“Thêm vào Màn hình chính”</b>.</p></div></div><div class="r"><button data-k="later">Đã hiểu</button></div>';
+    else return;
+    card('bot','inst',body);
+  });
+}
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;showInstall()});
+window.addEventListener('appinstalled',function(){var c=document.getElementById('vcx-inst');if(c)c.remove();dp=null;lsSet('vcx_inst_off',Date.now()+365*DAY)});
+window.vcInstallApp=function(){
+  if(!dp){alert(isIOS()?'Bấm nút Chia sẻ của Safari, rồi chọn “Thêm vào Màn hình chính”.':'Trình duyệt này chưa cho phép cài, hoặc ứng dụng đã được cài.');return}
+  dp.prompt();dp.userChoice.then(function(){dp=null;var c=document.getElementById('vcx-inst');if(c)c.remove()});
+};
+if(isIOS()||inAppBrowser())setTimeout(showInstall,5000);
+
+/* ---------- 2. THÔNG BÁO ---------- */
+function canNotify(){return 'Notification' in window}
+function notifOK(){return canNotify()&&Notification.permission==='granted'}
+function sysNotify(title,body,tag){
+  if(!notifOK())return;
+  var opt={body:body,icon:iconUrl(),badge:iconUrl(),tag:tag||'vc',renotify:true,data:{url:location.href}};
+  try{
+    if(swReg&&swReg.showNotification)swReg.showNotification(title,opt);
+    else if(navigator.serviceWorker&&navigator.serviceWorker.ready)navigator.serviceWorker.ready.then(function(r){r.showNotification(title,opt)});
+    else new Notification(title,opt);
+  }catch(e){try{new Notification(title,opt)}catch(x){}}
+}
+function askPermission(cb){
+  if(!canNotify()){cb&&cb('unsupported');return}
+  try{
+    var p=Notification.requestPermission(function(r){cb&&cb(r)});
+    if(p&&p.then)p.then(function(r){cb&&cb(r)});
+  }catch(e){cb&&cb('error')}
+}
+function permBtn(){
+  return (canNotify()&&Notification.permission==='default'&&!lsGet('vcx_perm_off'))?'<button data-k="perm">Bật thông báo trên máy</button>':'';
+}
+card.act=function(k,t,d){
+  if(k==='install'){window.vcInstallApp()}
+  else if(k==='later'){lsSet('vcx_inst_off',Date.now());d.remove()}
+  else if(k==='perm'){askPermission(function(r){d.remove();if(r==='denied')lsSet('vcx_perm_off',1)})}
+  else if(k==='open'){
+    var id=t.getAttribute('data-id');d.remove();
+    if(id){
+      clickData('data-story',id);
+      setTimeout(function(){
+        if(!$('.detail h1')||!$('[data-edit="'+id+'"]'))card('top','miss','<div class="h"><div><b>Chưa thấy truyện này trên máy bạn</b><p>Máy này đang dùng bản truyện đã lưu riêng. Vào <b>Quản lý truyện</b>, bấm <b>Bỏ bản sửa trên máy này</b> để cập nhật theo thư viện mới.</p></div></div>',14000);
+      },500);
+    }else clickData('data-go','home');
+  }
+  else if(k==='export'){d.remove();clickData('data-act','export')}
+};
+
+/* 2a. Báo khi bạn vừa đăng hoặc nhập truyện (bắt theo thông báo nhỏ của web) */
+var KEY='vcx_known';
+function rememberId(id){var k=lsGet(KEY);if(Array.isArray(k)&&id&&k.indexOf(id)<0){k.push(id);lsSet(KEY,k)}}
+function onPosted(kind,count){
+  setTimeout(function(){
+    var h=$('.detail h1'),eb=$('[data-edit]'),id=eb?eb.getAttribute('data-edit'):'',title=h?h.textContent.trim():'';
+    if(id)rememberId(id);
+    var one=kind==='post'&&title;
+    var head=one?'Đã đăng “'+esc(title)+'”':'Đã nhập '+count+' truyện';
+    var tip='Truyện đang lưu trong trình duyệt này. Muốn mọi người thấy, hãy tải <b>truyen.json</b> rồi đưa lên GitHub cùng thư mục với index.html.';
+    card('top','post','<div class="h"><img class="ic" src="'+esc(iconUrl())+'" alt=""><div><b>✅ '+head+'</b><p>'+tip+'</p></div></div><div class="r"><button class="p" data-k="export">Tải truyen.json</button>'+permBtn()+'</div>',20000);
+    sysNotify('Vườn Chữ',one?'Đã đăng truyện: '+title:'Đã nhập '+count+' truyện','vc-post');
+  },450);
+}
+var tEl=document.getElementById('toast'),lastT='',lastAt=0;
+if(tEl&&window.MutationObserver){
+  new MutationObserver(function(){
+    if(tEl.hidden)return;
+    var t=(tEl.textContent||'').trim(),now=Date.now();
+    if(!t||(t===lastT&&now-lastAt<2000))return;
+    lastT=t;lastAt=now;
+    if(/^Đã đăng truyện/i.test(t))onPosted('post',1);
+    else{var m=t.match(/^Đã nhập (\d+) truyện/i);if(m)onPosted('import',m[1])}
+  }).observe(tEl,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['hidden']});
+}
+/* cho phép gọi tay: window.dispatchEvent(new CustomEvent('vc:posted',{detail:{title:'Tên truyện'}})) */
+window.addEventListener('vc:posted',function(e){
+  var t=(e.detail&&e.detail.title)||'';
+  card('top','post','<div class="h"><img class="ic" src="'+esc(iconUrl())+'" alt=""><div><b>✅ Đã đăng '+(t?'“'+esc(t)+'”':'truyện')+'</b></div></div><div class="r">'+permBtn()+'</div>',12000);
+  sysNotify('Vườn Chữ',t?'Đã đăng truyện: '+t:'Đã đăng truyện','vc-post');
+});
+
+/* 2b. Báo cho người đọc khi truyen.json có truyện mới so với lần ghé trước */
+function checkNew(){
+  fetch('truyen.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():[]}).then(function(d){
+    var list=(Array.isArray(d)?d:(d&&d.stories)||[]).filter(function(s){return s&&s.id&&s.title});
+    var ids=list.map(function(s){return String(s.id)}),known=lsGet(KEY);
+    if(!Array.isArray(known)){lsSet(KEY,ids);return}          /* lần đầu: chỉ ghi nhớ, không báo */
+    var fresh=list.filter(function(s){return known.indexOf(String(s.id))<0});
+    if(!fresh.length)return;
+    lsSet(KEY,known.concat(fresh.map(function(s){return String(s.id)})));
+    var names=fresh.slice(0,3).map(function(s){return '“'+esc(s.title)+'”'}).join(', ')+(fresh.length>3?' và '+(fresh.length-3)+' truyện khác':'');
+    var plain=fresh.slice(0,3).map(function(s){return s.title}).join(', ');
+    whenUnlocked(function(){
+      card('top','new','<div class="h"><img class="ic" src="'+esc(iconUrl())+'" alt=""><div><b>🔔 Có '+fresh.length+' truyện mới</b><p>'+names+'</p></div></div><div class="r"><button class="p" data-k="open" data-id="'+(fresh.length===1?esc(fresh[0].id):'')+'">'+(fresh.length===1?'Đọc ngay':'Xem')+'</button>'+permBtn()+'</div>');
+      sysNotify('Vườn Chữ có truyện mới',plain,'vc-new');
+    });
+  }).catch(function(){});
+}
+if(document.readyState==='complete')setTimeout(checkNew,1500);else window.addEventListener('load',function(){setTimeout(checkNew,1500)});
+})();
+</script>    
  </body>
 </html>
