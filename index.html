@@ -1588,5 +1588,78 @@ function checkNew(){
 if(document.readyState==='complete')setTimeout(checkNew,1500);else window.addEventListener('load',function(){setTimeout(checkNew,1500)});
 })();
 </script>    
- </body>
+ <script>
+(function() {
+  'use strict';
+
+  // Tên khóa lưu trong bộ nhớ trình duyệt & mật khẩu chuẩn
+  const AUTH_KEY = 'vuonchu_is_authenticated';
+  const PASSCODE = 'vuonchu2026';
+
+  // Hàm chuẩn hóa chuỗi (tự động xóa dấu tiếng Việt và viết thường)
+  function cleanText(str) {
+    return (str || '')
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .trim();
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Tìm các phần tử giao diện Bức tường bảo vệ (Gatekeeper)
+    const gateOverlay = document.getElementById('gatekeeper') || document.querySelector('.gate-overlay') || document.querySelector('.security-gate');
+    const passInput = document.getElementById('gateInput') || document.querySelector('.gate-input');
+    const passBtn = document.getElementById('gateSubmit') || document.querySelector('.gate-btn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // 1. TỰ ĐỘNG MỞ KHÓA: Nếu đã từng đăng nhập thành công trước đó
+    if (localStorage.getItem(AUTH_KEY) === 'true') {
+      if (gateOverlay) {
+        gateOverlay.style.display = 'none';
+      }
+    }
+
+    // 2. XỬ LÝ KHI NGƯỜI DÙNG NHẬP MẬT KHẨU
+    function unlockApp() {
+      if (!passInput) return;
+      
+      const userInput = cleanText(passInput.value);
+      if (userInput === PASSCODE) {
+        // Lưu trạng thái đăng nhập vĩnh viễn vào máy
+        localStorage.setItem(AUTH_KEY, 'true');
+        
+        // Ẩn bức tường bảo vệ
+        if (gateOverlay) {
+          gateOverlay.style.opacity = '0';
+          setTimeout(function() {
+            gateOverlay.style.display = 'none';
+          }, 300);
+        }
+      } else {
+        alert('Mật khẩu chưa chính xác, vui lòng thử lại!');
+        passInput.value = '';
+        passInput.focus();
+      }
+    }
+
+    // Sự kiện bấm nút mở khóa hoặc nhấn Enter
+    if (passBtn) passBtn.addEventListener('click', unlockApp);
+    if (passInput) {
+      passInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') unlockApp();
+      });
+    }
+
+    // 3. XỬ LÝ ĐĂNG XUẤT / KHÓA LẠI TRANG WEB
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function() {
+        localStorage.removeItem(AUTH_KEY); // Xóa dữ liệu đăng nhập
+        location.reload(); // Tải lại trang để hiện lại tường khóa
+      });
+    }
+  });
+})();
+</script>
+</body>
 </html>
