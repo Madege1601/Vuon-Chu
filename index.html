@@ -1661,5 +1661,218 @@ if(document.readyState==='complete')setTimeout(checkNew,1500);else window.addEve
   });
 })();
 </script>
+  <script>
+    /* ===== ADD-ON: PHÂN QUYỀN (QUẢN TRỊ / THÀNH VIÊN / KHÁCH) =====
+   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
+   - Khách (chưa đăng nhập): không thấy truyện nào, không tìm kiếm được. Chỉ thấy trang chủ, trò chuyện, sổ tay.
+   - Thành viên (đã đăng nhập): đọc truyện, lưu tiến độ, theo dõi. Không được đăng, sửa, xóa.
+   - Quản trị viên: thành viên đã nhập đúng mật khẩu quản trị (menu tài khoản, mục Quản trị viên). Được đăng, sửa, xóa truyện.
+   LƯU Ý: đây là phân quyền ở phía giao diện, đủ để chia vai trò cho người dùng bình thường,
+   nhưng không phải bảo mật thật. File truyen.json trên GitHub vẫn ai biết link cũng mở được. */
+(function(){
+'use strict';
+if(window.__vcRole)return;window.__vcRole=1;
+
+/* ===== CẤU HÌNH ===== */
+/* Mã SHA-256 của mật khẩu quản trị. Mặc định là mật khẩu: quantri2026  (HÃY ĐỔI: xem mục "Tạo mã mật khẩu mới" trong hộp Quản trị viên) */
+var ADMIN_HASH='926a3fd374636f2edfea9d7db15931e53237d51ecf49c8a81a29e39a50e9ddc3';
+/* Giới hạn tên đăng nhập được làm quản trị. Để [] nghĩa là tài khoản nào nhập đúng mật khẩu cũng được. Ví dụ: ['admin','minh'] */
+var ADMIN_USERS=[];
+/* Các trang khách được xem (không chứa truyện) */
+var OPEN=['home','chat','theory','staff'];
+
+/* ===== TIỆN ÍCH ===== */
+function $(s,r){return (r||document).querySelector(s)}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function getUser(){try{var u=JSON.parse(lsGet('vc_user')||'null');return u&&u.username?u:null}catch(e){return null}}
+function role(){
+  var u=getUser();if(!u)return 'guest';
+  if(lsGet('vcr_admin')===u.username&&(!ADMIN_USERS.length||ADMIN_USERS.indexOf(u.username)>-1))return 'admin';
+  return 'member';
+}
+var LABEL={guest:'Khách',member:'Thành viên',admin:'Quản trị viên'};
+function sha(s){
+  if(!(window.crypto&&crypto.subtle))return Promise.reject(new Error('Trình duyệt cần mở web qua https để kiểm tra mật khẩu.'));
+  return crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)).then(function(b){
+    return Array.prototype.map.call(new Uint8Array(b),function(x){return ('0'+x.toString(16)).slice(-2)}).join('');
+  });
+}
+var tt=0;
+function say(m){
+  var t=$('#toast');if(!t)return;t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},2800);
+}
+
+/* ===== CSS ===== */
+var st=document.createElement('style');
+st.textContent=
+ 'html[data-vcrole="guest"] #rail [data-go="dai"],html[data-vcrole="guest"] #rail [data-go="ngan"],html[data-vcrole="guest"] #rail [data-go="rank"],html[data-vcrole="guest"] #rail [data-go="manage"],'+
+ 'html[data-vcrole="guest"] #searchBtn,html[data-vcrole="guest"] #view .card,html[data-vcrole="guest"] #view .grid,html[data-vcrole="guest"] .vcx#vcx-new{display:none!important}'+
+ 'html[data-vcrole="member"] #rail [data-go="manage"],html[data-vcrole="member"] #userPop [data-go="manage"],html[data-vcrole="member"] #view [data-edit],html[data-vcrole="member"] #view [data-del]{display:none!important}'+
+ '.vcr-lock{text-align:center;display:grid;gap:12px;justify-items:center;padding:34px 20px;margin:20px 0}.vcr-lock .big{font-size:38px;line-height:1}.vcr-lock h2{font-size:22px;margin:0}.vcr-lock p{margin:0;color:var(--muted);max-width:460px}'+
+ '.vcr-ov{position:fixed;inset:0;background:rgba(10,18,15,.55);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px}'+
+ '.vcr-box{background:var(--surface,#fff);color:var(--ink,#222);border-radius:14px;max-width:420px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.35);display:grid;gap:10px;font:15px/1.5 system-ui,sans-serif}'+
+ '.vcr-box h3{margin:0;font-size:18px}.vcr-box input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #9aa8a2;border-radius:8px;font:inherit;background:transparent;color:inherit}'+
+ '.vcr-box .r{display:flex;gap:8px;flex-wrap:wrap}.vcr-box small{color:#6b7a74}.vcr-box code{word-break:break-all;font-size:12px;background:rgba(127,127,127,.15);padding:6px 8px;border-radius:6px;display:block;user-select:all}'+
+ '.vcr-err{color:#c0392b;min-height:18px;font-size:13px}.vcr-ins.note{padding:2px 12px 6px;font-size:12px}';
+document.head.appendChild(st);
+
+/* ===== KHÓA NỘI DUNG ===== */
+function lockHtml(why){
+  var g=why==='guest';
+  return '<div class="panel vcr-lock"><span class="big" aria-hidden="true">'+(g?'🔒':'⛔')+'</span><h2>'+(g?'Hãy đăng nhập để đọc truyện':'Khu vực dành cho quản trị viên')+'</h2>'+
+   '<p>'+(g?'Thư viện chỉ mở cho thành viên đã đăng nhập. Đăng ký miễn phí, chỉ mất vài giây.':'Tài khoản của bạn là thành viên nên chưa được đăng, sửa hoặc xóa truyện.')+'</p>'+
+   (g?'<div class="r" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn" data-vcr="login">Đăng nhập</button><button class="btn ghost" data-vcr="reg">Đăng ký</button></div>'
+     :'<button class="btn ghost" data-vcr="adm">🔑 Tôi là quản trị viên</button>')+'</div>';
+}
+function curNav(){var b=$('#rail [aria-current]');return b?b.getAttribute('data-go'):''}
+var obs=null;
+function guard(){
+  var v=$('#view');if(!v)return;
+  var r=role(),cur=curNav(),lock=v.querySelector('.vcr-lock'),why=null,home=false,i,k;
+  if(r==='guest'){if(OPEN.indexOf(cur)<0)why='guest';else if(cur==='home')home=true}
+  else if(r==='member'){if(cur==='manage'||v.querySelector('#editForm,#dropZone'))why='member'}
+  if(why){
+    if(lock&&v.children.length===2&&lock.getAttribute('data-why')===why)return;
+    for(i=v.children.length-1;i>=0;i--){k=v.children[i];if(k.tagName!=='FOOTER')v.removeChild(k)}
+    var d=document.createElement('div');d.innerHTML=lockHtml(why);d=d.firstChild;d.setAttribute('data-why',why);
+    v.insertBefore(d,v.firstChild);
+  }else if(home){
+    var extra=false;
+    for(i=v.children.length-1;i>=0;i--){
+      k=v.children[i];
+      if(k.tagName==='FOOTER'||k.classList.contains('hero')||k.classList.contains('vcr-lock'))continue;
+      v.removeChild(k);extra=true;
+    }
+    if(!v.querySelector('.vcr-lock')){
+      var h=document.createElement('div');h.innerHTML=lockHtml('guest');h=h.firstChild;h.setAttribute('data-why','guest');
+      var hero=v.querySelector('.hero');
+      if(hero&&hero.nextSibling)v.insertBefore(h,hero.nextSibling);else v.insertBefore(h,v.firstChild);
+    }
+  }
+  if(obs)obs.takeRecords();
+}
+
+/* ===== MENU TÀI KHOẢN + NHÃN NHÓM ===== */
+function decorate(){
+  var r=role(),pop=$('#userPop');
+  if(pop&&pop.getAttribute('data-vcr-role')!==r){
+    Array.prototype.forEach.call(pop.querySelectorAll('.vcr-ins'),function(n){n.remove()});
+    var head=pop.querySelector('.nitem'),out=pop.querySelector('[data-act="logout"]');
+    var n=document.createElement('div');n.className='note vcr-ins';n.textContent='Vai trò: '+LABEL[r];
+    if(head&&head.nextSibling)pop.insertBefore(n,head.nextSibling);else pop.insertBefore(n,pop.firstChild);
+    var b=document.createElement('button');b.className='item vcr-ins';b.setAttribute('data-vcr','adm');
+    b.textContent=r==='admin'?'🔑 Công cụ quản trị':'🔑 Tôi là quản trị viên';
+    pop.insertBefore(b,out||null);
+    pop.setAttribute('data-vcr-role',r);
+  }
+  var rail=$('#rail');
+  if(rail){
+    var kids=rail.children,i,j,g,any;
+    for(i=0;i<kids.length;i++){
+      if(!kids[i].classList.contains('grp'))continue;
+      g=kids[i];any=false;
+      for(j=i+1;j<kids.length&&!kids[j].classList.contains('grp');j++){
+        if(getComputedStyle(kids[j]).display!=='none'){any=true;break}
+      }
+      var want=any?'':'none';if(g.style.display!==want)g.style.display=want;
+    }
+  }
+  if(obs)obs.takeRecords();
+}
+
+/* ===== ÁP DỤNG ===== */
+var last=null;
+function apply(){
+  var r=role();
+  if(last==='admin'&&r==='guest')lsSet('vcr_admin',null);
+  document.documentElement.setAttribute("data-vcrole",r);
+  var changed=last!==null&&last!==r;
+  var v=$('#view'),hadLock=v&&v.querySelector('.vcr-lock');
+  last=r;
+  if(changed&&hadLock&&r!=='guest'){var br=$('.brand');if(br)br.click();}
+  guard();decorate();
+}
+var queued=false;
+function sched(){if(queued)return;queued=true;Promise.resolve().then(function(){queued=false;apply()})}
+obs=new MutationObserver(sched);
+['#view','#userSlot','#rail'].forEach(function(s){var el=$(s);if(el)obs.observe(el,{childList:true,subtree:s!=='#view'})});
+window.addEventListener('storage',sched);
+
+/* ===== CHẶN THAO TÁC KHÔNG ĐƯỢC PHÉP (chạy trước trình xử lý chính) ===== */
+var G_BLOCK='[data-story],[data-read],[data-edit],[data-del],[data-dl],[data-nav],[data-rank],[data-go="dai"],[data-go="ngan"],[data-go="rank"],[data-go="manage"],#searchBtn';
+var M_BLOCK='[data-edit],[data-del],[data-go="manage"]';
+window.addEventListener('click',function(e){
+  var t=e.target;if(!t||!t.closest)return;
+  var own=t.closest('[data-vcr]');
+  if(own){
+    e.stopPropagation();e.preventDefault();
+    var a=own.getAttribute('data-vcr'),pop=$('#userPop');if(pop)pop.hidden=true;
+    if(a==='adm')openDlg();
+    else if(a==='login'||a==='reg'){var lb=$('#loginBtn')||$('#heroLogin');if(lb)lb.click();if(a==='reg'){setTimeout(function(){var tb=$('[data-tab="reg"]');if(tb)tb.click()},0)}}
+    return;
+  }
+  var r=role();
+  if(r==='guest'&&t.closest(G_BLOCK)){
+    e.stopPropagation();e.preventDefault();say('Hãy đăng nhập để xem truyện');
+    var lb2=$('#loginBtn');if(lb2)lb2.click();return;
+  }
+  if(r==='member'&&t.closest(M_BLOCK)){
+    e.stopPropagation();e.preventDefault();say('Chỉ quản trị viên mới được đăng, sửa hoặc xóa truyện');
+  }
+},true);
+
+/* ===== HỘP QUẢN TRỊ VIÊN ===== */
+var ov=null;
+function closeDlg(){if(ov){ov.remove();ov=null}}
+function openDlg(){
+  closeDlg();
+  var u=getUser();
+  ov=document.createElement('div');ov.className='vcr-ov';
+  var admin=role()==='admin',h='<div class="vcr-box" role="dialog" aria-modal="true">';
+  if(!u){h+='<h3>Cần đăng nhập</h3><p>Hãy đăng nhập tài khoản của bạn trước, rồi mới mở quyền quản trị.</p><div class="r"><button class="btn" data-x="close">Đóng</button></div>'}
+  else if(!admin){
+    h+='<h3>Mở quyền quản trị</h3><small>Tài khoản: @'+esc(u.username)+'</small>'+
+       '<input type="password" id="vcrPw" placeholder="Mật khẩu quản trị" autocomplete="off"><div class="vcr-err" id="vcrErr" role="alert"></div>'+
+       '<div class="r"><button class="btn" data-x="ok">Mở quyền</button><button class="btn ghost" data-x="close">Hủy</button></div>';
+  }else{
+    h+='<h3>Công cụ quản trị</h3><small>Bạn đang là quản trị viên (@'+esc(u.username)+').</small>'+
+       '<div class="r"><button class="btn ghost" data-x="out">Thoát quyền quản trị</button></div>'+
+       '<hr style="border:0;border-top:1px solid rgba(127,127,127,.3);width:100%;margin:4px 0"><b>Tạo mã mật khẩu mới</b>'+
+       '<small>Gõ mật khẩu mới, bấm Tạo mã, rồi chép đoạn mã dán thay vào dòng <b>ADMIN_HASH</b> trong role-addon.</small>'+
+       '<input type="text" id="vcrNew" placeholder="Mật khẩu mới" autocomplete="off"><div class="r"><button class="btn" data-x="gen">Tạo mã</button></div>'+
+       '<code id="vcrOut" hidden></code><div class="r"><button class="btn ghost" data-x="close">Đóng</button></div>';
+  }
+  ov.innerHTML=h+'</div>';
+  ov.addEventListener('click',function(e){
+    if(e.target===ov){closeDlg();return}
+    var b=e.target.closest&&e.target.closest('[data-x]');if(!b)return;
+    var x=b.getAttribute('data-x');
+    if(x==='close')closeDlg();
+    else if(x==='ok')tryUnlock();
+    else if(x==='out'){lsSet('vcr_admin',null);closeDlg();apply();say('Đã thoát quyền quản trị');var br=$('.brand');if(br)br.click()}
+    else if(x==='gen'){
+      var v=$('#vcrNew').value;if(!v)return;
+      sha(v).then(function(hx){var o=$('#vcrOut');o.hidden=false;o.textContent=hx}).catch(function(er){var o=$('#vcrOut');o.hidden=false;o.textContent=er.message});
+    }
+  });
+  ov.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='vcrPw'){e.preventDefault();tryUnlock()}if(e.key==='Escape')closeDlg()});
+  document.body.appendChild(ov);
+  var f=$('#vcrPw')||$('#vcrNew');if(f)setTimeout(function(){f.focus()},30);
+}
+function tryUnlock(){
+  var u=getUser(),er=$('#vcrErr'),pw=$('#vcrPw');if(!u||!pw)return;
+  if(ADMIN_USERS.length&&ADMIN_USERS.indexOf(u.username)<0){er.textContent='Tài khoản này không nằm trong danh sách quản trị.';return}
+  sha(pw.value).then(function(hx){
+    if(hx!==ADMIN_HASH){er.textContent='Mật khẩu quản trị chưa đúng.';return}
+    lsSet('vcr_admin',u.username);closeDlg();apply();say('Đã mở quyền quản trị');
+  }).catch(function(e2){er.textContent=e2.message});
+}
+
+window.vcRole={get:role};
+apply();
+})();
+</script>    
 </body>
 </html>
