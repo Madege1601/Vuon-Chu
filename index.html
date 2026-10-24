@@ -2,6 +2,159 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
+<style>
+  /* ===== DAILY NOVEL - BỐC THẺ TRUYỆN MỖI NGÀY ===== */
+.daily-section {
+  max-width: 440px;
+  margin: 30px auto;
+  padding: 0 16px;
+  font-family: 'Be Vietnam Pro', sans-serif;
+}
+
+.daily-header {
+  margin-bottom: 20px;
+}
+.daily-header .sub-title {
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  font-style: italic;
+  color: #e2a0cd;
+  text-transform: uppercase;
+}
+.daily-header .main-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 4px 0 10px 0;
+}
+.daily-header .title-line {
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #9b72cf, transparent);
+  border-radius: 2px;
+}
+
+/* Khung bọc bộ bài */
+.daily-card-container {
+  background: linear-gradient(180deg, #1b1b32 0%, #131324 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 30px 20px 20px 20px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Vùng các lá bài xếp chồng */
+.card-stack {
+  position: relative;
+  width: 220px;
+  height: 290px;
+  margin: 0 auto 24px auto;
+  perspective: 1000px;
+}
+
+.stack-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card-back-1 {
+  background: #18192b;
+  border: 1px dashed rgba(255,255,255,0.15);
+  transform: rotate(-10deg) scale(0.92);
+}
+.card-back-2 {
+  background: #202138;
+  border: 1px dashed rgba(255,255,255,0.15);
+  transform: rotate(10deg) scale(0.92);
+}
+
+/* Mặt trước lá bài chính */
+.card-front {
+  background: #191829;
+  border: 1px solid rgba(226, 160, 205, 0.3);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  text-align: center;
+  z-index: 3;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(226, 160, 205, 0.2);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+}
+
+/* Họa tiết 4 góc lá bài */
+.c-corner { position: absolute; color: #e2a0cd; font-size: 12px; opacity: 0.6; }
+.c-tl { top: 4px; left: 6px; }
+.c-tr { top: 4px; right: 6px; }
+.c-bl { bottom: 4px; left: 6px; }
+.c-br { bottom: 4px; right: 6px; }
+
+.card-symbol {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(226, 160, 205, 0.1);
+  border: 1px solid rgba(226, 160, 205, 0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: #e2a0cd; font-size: 18px; margin-bottom: 14px;
+}
+
+.card-novel-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 20px; font-weight: 700;
+  color: #ffffff; margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.card-moon { font-size: 10px; color: #e2a0cd; margin: 4px 0; }
+
+.card-novel-quote {
+  font-size: 12px; font-style: italic;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.4;
+}
+
+/* Nút Bốc Bài */
+.draw-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #9066cc 0%, #5973c7 100%);
+  color: #ffffff;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(110, 80, 190, 0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+/* Hiệu ứng rút bài */
+.drawing-anim {
+  animation: cardFlip 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes cardFlip {
+  0% { transform: translateY(0) rotate(0) scale(1); }
+  50% { transform: translateY(-40px) rotate(-15deg) scale(0.85); opacity: 0.5; }
+  100% { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
+}
+</style>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Vườn Chữ</title>
 <meta name="theme-color" content="#1D6B58">
@@ -356,6 +509,126 @@ var NAV=[
  {g:'Quản trị'},
  {id:'manage',label:'Quản lý truyện',ic:'⚙'}
 ];
+  /* ===== 1. KHAI BÁO MENU SIDEBAR ===== */
+var NAV = [
+  {id:'home',label:'Trang chủ',ic:'⌂'},
+  {id:'tu-truyen',label:'Tủ Truyện Cá Nhân',ic:'♥'},
+  {id:'chat',label:'Sảnh Trò Chuyện',ic:'✉'},
+  {g:'Thư viện'},
+  {id:'dai',label:'Vườn Truyện Dài',ic:'❦'},
+  {id:'ngan',label:'Vườn Truyện Ngắn',ic:'✎'},
+  {id:'theory',label:'Cơ Sở Lý Thuyết',ic:'☰'},
+  {g:'Cộng đồng'},
+  {id:'rank',label:'Bảng Xếp Hạng',ic:'★'},
+  {id:'staff',label:'Công Tác Thành Viên',ic:'✦'},
+  {g:'Quản trị'},
+  {id:'manage',label:'Quản lý truyện',ic:'⚙'}
+];
+
+/* ===== 2. TỰ ĐỘNG CHÈN KHUNG BỐC THẺ VÀO SIDEBAR ===== */
+document.addEventListener('DOMContentLoaded', function() {
+  // Tìm thanh menu sidebar bên trái
+  var sidebarNav = document.querySelector('.sidebar-nav') || 
+                   document.querySelector('.sidebar') || 
+                   document.querySelector('.nav') || 
+                   document.querySelector('#sidebar');
+  if (!sidebarNav) return;
+
+  var dailyHtml = `
+    <div class="nav-label" style="margin-top: 15px; padding: 0 10px; font-size: 11px; opacity:0.6; font-weight:700;">TIỆN ÍCH</div>
+    <section class="daily-section-sidebar" style="margin: 10px 0; padding: 0 5px;">
+      <div class="daily-card-container" style="padding: 14px 10px; border-radius: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+        
+        <div class="daily-header" style="margin-bottom: 10px; text-align: center;">
+          <div class="sub-title" style="font-size: 9px; letter-spacing: 1px; color: #e2a0cd; font-weight:700;">DAILY NOVEL</div>
+          <h3 class="main-title" style="font-size: 16px; color: #fff; margin: 2px 0;">Hôm nay đọc gì?</h3>
+        </div>
+
+        <div class="card-stack" style="width: 100%; height: 190px; margin: 0 auto 10px auto; position: relative;">
+          <div class="stack-card card-back-1"></div>
+          <div class="stack-card card-back-2"></div>
+          
+          <div class="stack-card card-front" id="dailyMainCard" style="padding: 8px;">
+            <div class="card-inner" style="padding: 6px;">
+              <span class="c-corner c-tl">┌</span>
+              <span class="c-corner c-tr">┐</span>
+              <span class="c-corner c-bl">└</span>
+              <span class="c-corner c-br">┘</span>
+              
+              <div class="card-symbol" id="dailyCardSymbol" style="width: 28px; height: 28px; font-size: 12px; margin-bottom: 6px;">⚙</div>
+              <div class="card-novel-title" id="dailyCardTitle" style="font-size: 14px; font-weight:700; color:#fff;">Lâu Đài Tình Ái</div>
+              <div class="card-moon" style="font-size: 8px;">🌙</div>
+              <div class="card-novel-quote" id="dailyCardQuote" style="font-size: 10px; opacity:0.8;">Khi tình ta đan vào nhau...</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="draw-btn" id="btnDrawStory" onclick="drawRandomStory()" style="width: 100%; padding: 8px; font-size: 12px; border-radius: 20px; cursor: pointer;">
+          <span>🎴 Rút truyện</span>
+        </button>
+
+      </div>
+    </section>
+  `;
+
+  // Thực thi chèn HTML vào cuối thanh Sidebar
+  sidebarNav.insertAdjacentHTML('beforeend', dailyHtml);
+
+  // Hiển thị lại lá bài đã rút hôm nay nếu có
+  var savedCard = JSON.parse(localStorage.getItem('vuonchu_today_card_data') || 'null');
+  if (savedCard && savedCard.date === new Date().toDateString()) {
+    if(document.getElementById('dailyCardTitle')) document.getElementById('dailyCardTitle').textContent = savedCard.story.ten || savedCard.story.title;
+    if(document.getElementById('dailyCardQuote')) document.getElementById('dailyCardQuote').textContent = savedCard.story.mota || savedCard.story.quote;
+    if(document.getElementById('dailyCardSymbol')) document.getElementById('dailyCardSymbol').textContent = savedCard.symbol;
+  }
+});
+
+/* ===== 3. HÀM BỐC THẺ TRUYỆN KHÔNG TRÙNG LẶP ===== */
+window.drawRandomStory = function() {
+  var allStories = window.truyenData || window.STORIES || [];
+  if (!allStories || allStories.length === 0) {
+    allStories = [
+      { id: 't1', ten: 'Lâu Đài Tình Ái', mota: 'Khi tình ta đan vào nhau trong bóng đêm dịu ngọt.' },
+      { id: 't2', ten: 'Vườn Chữ Ban Mai', mota: 'Nơi những hạt giọt sương đọng lại trên từng trang sách.' },
+      { id: 't3', ten: 'Ký Ức Hoàng Hôn', mota: 'Chuyến tàu đưa ta trở về những ngày thu xưa cũ.' },
+      { id: 't4', ten: 'Tách Trà Đêm Muộn', mota: 'Lắng nghe nhịp đập dịu dàng của tâm hồn.' }
+    ];
+  }
+
+  var drawnIds = JSON.parse(localStorage.getItem('vuonchu_drawn_history') || '[]');
+  var available = allStories.filter(function(item) {
+    return !drawnIds.includes(item.id || item.ten);
+  });
+
+  if (available.length === 0) {
+    drawnIds = [];
+    available = allStories;
+  }
+
+  var symbols = ['☸', '✡', '✦', '🌙', '⚜️', '☀️', '🕊️', '🌸'];
+  var randomIndex = Math.floor(Math.random() * available.length);
+  var selectedStory = available[randomIndex];
+  var selectedSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+
+  var cardEl = document.getElementById('dailyMainCard');
+  if (cardEl) {
+    cardEl.classList.add('drawing-anim');
+    setTimeout(function() {
+      document.getElementById('dailyCardTitle').textContent = selectedStory.ten || selectedStory.title;
+      document.getElementById('dailyCardQuote').textContent = selectedStory.mota || selectedStory.quote || 'Khám phá câu chuyện ngay...';
+      document.getElementById('dailyCardSymbol').textContent = selectedSymbol;
+      cardEl.classList.remove('drawing-anim');
+    }, 300);
+  }
+
+  drawnIds.push(selectedStory.id || selectedStory.ten);
+  localStorage.setItem('vuonchu_drawn_history', JSON.stringify(drawnIds));
+  localStorage.setItem('vuonchu_today_card_data', JSON.stringify({
+    story: selectedStory,
+    symbol: selectedSymbol,
+    date: new Date().toDateString()
+  }));
+};
 var NOTI=[{id:1,t:'Chào mừng bạn đến với Vườn Chữ. Vào “Quản lý truyện” để đăng hoặc tải file truyện lên.',un:true}];
 var THEORY=[
  ['Cách đăng truyện?','Vào “Quản lý truyện”, bấm “Truyện mới”, điền thông tin rồi dán nội dung. Mỗi dòng là một đoạn văn. Gõ “Chương 1: Tên chương” ở đầu dòng để bắt đầu một chương mới. Bạn cũng có thể tải file .txt, .docx, .epub, .pdf… lên thay vì gõ tay.'],
@@ -1874,5 +2147,88 @@ window.vcRole={get:role};
 apply();
 })();
 </script>    
+  <script>
+(function() {
+  'use strict';
+
+  // Khóa lưu lịch sử bốc thẻ trong bộ nhớ máy
+  const KEY_DRAWN_IDS = 'vuonchu_drawn_history';
+  const KEY_TODAY_CARD = 'vuonchu_today_card_data';
+
+  // Danh sách các biểu tượng linh hồn bài Tarot
+  const SYMBOLS = ['☸', '✡', '✦', '🌙', '⚜️', '☀️', '🕊️', '🌸'];
+
+  // Hàm Rút Truyện Ngẫu Nhiên (Không trùng lặp)
+  window.drawRandomStory = function() {
+    // 1. Lấy danh sách truyện khả dụng từ bộ dữ liệu web của bạn
+    var allStories = window.truyenData || window.STORIES || [];
+    
+    // Nếu chưa nhận được dữ liệu truyen.json, sử dụng danh sách mẫu
+    if (!allStories || allStories.length === 0) {
+      allStories = [
+        { id: 't1', ten: 'Lâu Đài Tình Ái', mota: 'Khi tình ta đan vào nhau trong bóng đêm dịu ngọt.' },
+        { id: 't2', ten: 'Vườn Chữ Ban Mai', mota: 'Nơi những hạt giọt sương đọng lại trên từng trang sách.' },
+        { id: 't3', ten: 'Ký Ức Hoàng Hôn', mota: 'Chuyến tàu đưa ta trở về những ngày thu xưa cũ.' },
+        { id: 't4', ten: 'Tách Trà Đêm Muộn', mota: 'Lắng nghe nhịp đập dịu dàng của tâm hồn.' }
+      ];
+    }
+
+    // 2. Lấy lịch sử các truyện đã rút từ localStorage
+    var drawnIds = JSON.parse(localStorage.getItem(KEY_DRAWN_IDS) || '[]');
+
+    // 3. Lọc ra danh sách truyện CHƯA ĐƯỢC RÚT
+    var availableStories = allStories.filter(function(item) {
+      return !drawnIds.includes(item.id || item.ten);
+    });
+
+    // Nếu đã rút hết tất cả các truyện -> Tự động RS lịch sử để bốc lại vòng mới!
+    if (availableStories.length === 0) {
+      drawnIds = [];
+      availableStories = allStories;
+    }
+
+    // 4. Chọn ngẫu nhiên 1 truyện từ danh sách chưa rút
+    var randomIndex = Math.floor(Math.random() * availableStories.length);
+    var selectedStory = availableStories[randomIndex];
+    var selectedSymbol = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+
+    // 5. Hiệu ứng rút bài & Lật lá bài
+    var cardEl = document.getElementById('dailyMainCard');
+    if (cardEl) {
+      cardEl.classList.add('drawing-anim');
+      
+      setTimeout(function() {
+        document.getElementById('dailyCardTitle').textContent = selectedStory.ten || selectedStory.title;
+        document.getElementById('dailyCardQuote').textContent = selectedStory.mota || selectedStory.quote || 'Khám phá thế giới qua từng câu chữ...';
+        document.getElementById('dailyCardSymbol').textContent = selectedSymbol;
+        
+        cardEl.classList.remove('drawing-anim');
+      }, 300);
+    }
+
+    // 6. Lưu ID truyện vừa rút vào lịch sử
+    drawnIds.push(selectedStory.id || selectedStory.ten);
+    localStorage.setItem(KEY_DRAWN_IDS, JSON.stringify(drawnIds));
+    
+    // Lưu lá bài hôm nay
+    localStorage.setItem(KEY_TODAY_CARD, JSON.stringify({
+      story: selectedStory,
+      symbol: selectedSymbol,
+      date: new Date().toDateString()
+    }));
+  };
+
+  // Khôi phục lại lá bài đã bốc trong ngày khi người dùng quay lại trang
+  document.addEventListener('DOMContentLoaded', function() {
+    var savedCard = JSON.parse(localStorage.getItem(KEY_TODAY_CARD) || 'null');
+    if (savedCard && savedCard.date === new Date().toDateString()) {
+      var story = savedCard.story;
+      document.getElementById('dailyCardTitle').textContent = story.ten || story.title;
+      document.getElementById('dailyCardQuote').textContent = story.mota || story.quote;
+      document.getElementById('dailyCardSymbol').textContent = savedCard.symbol;
+    }
+  });
+})();
+</script>
 </body>
 </html>
