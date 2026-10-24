@@ -658,14 +658,65 @@ var S={
 };
 var BGS={paper:['#FFFFFF','#222B27'],sepia:['#F3EAD3','#3B3224'],grey:['#D9DDDA','#1E2421'],night:['#10151A','#C9D3D8']};
 
-/* ===== KHUNG TRANG ===== */
+/* ===== KHUNG TRANG & SIDEBAR ===== */
 function renderRail(){
   var rail = $('#rail'); if(!rail) return;
-  rail.innerHTML=NAV.map(function(n){
-    if(n.g)return '<div class="grp">'+n.g+'</div>';
-    var cur=S.route===n.id||((S.route==='story'||S.route==='read'||S.route==='edit')&&S.arg&&byId(S.arg)&&byId(S.arg).sec===n.id);
+  
+  // 1. Tạo menu chính
+  var navHtml = NAV.map(function(n){
+    if(n.g) return '<div class="grp">'+n.g+'</div>';
+    var cur = S.route === n.id || ((S.route==='story'||S.route==='read'||S.route==='edit') && S.arg && byId(S.arg) && byId(S.arg).sec===n.id);
     return '<button data-go="'+n.id+'"'+(cur?' aria-current="page"':'')+'><span aria-hidden="true">'+n.ic+'</span>'+n.label+'</button>';
   }).join('');
+
+  // 2. Khung Bốc Thẻ
+  var dailyHtml = `
+    <div class="grp" style="margin-top: 18px;">TIỆN ÍCH</div>
+    <section class="daily-section-sidebar" style="margin: 8px 0; padding: 0 4px;">
+      <div class="daily-card-container" style="padding: 14px 10px; border-radius: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+        
+        <div class="daily-header" style="margin-bottom: 10px; text-align: center;">
+          <div class="sub-title" style="font-size: 9px; letter-spacing: 1px; color: #e2a0cd; font-weight:700;">DAILY NOVEL</div>
+          <h3 class="main-title" style="font-size: 16px; color: #fff; margin: 2px 0;">Hôm nay đọc gì?</h3>
+        </div>
+
+        <div class="card-stack" style="width: 100%; height: 190px; margin: 0 auto 10px auto; position: relative;">
+          <div class="stack-card card-back-1"></div>
+          <div class="stack-card card-back-2"></div>
+          
+          <div class="stack-card card-front" id="dailyMainCard" style="padding: 8px;">
+            <div class="card-inner" style="padding: 6px;">
+              <span class="c-corner c-tl">┌</span>
+              <span class="c-corner c-tr">┐</span>
+              <span class="c-corner c-bl">└</span>
+              <span class="c-corner c-br">┘</span>
+              
+              <div class="card-symbol" id="dailyCardSymbol" style="width: 28px; height: 28px; font-size: 12px; margin-bottom: 6px;">⚙</div>
+              <div class="card-novel-title" id="dailyCardTitle" style="font-size: 14px; font-weight:700; color:#fff;">Lâu Đài Tình Ái</div>
+              <div class="card-moon" style="font-size: 8px;">🌙</div>
+              <div class="card-novel-quote" id="dailyCardQuote" style="font-size: 10px; opacity:0.8;">Khi tình ta đan vào nhau...</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="draw-btn" id="btnDrawStory" onclick="drawRandomStory()" style="width: 100%; padding: 8px; font-size: 12px; border-radius: 20px; cursor: pointer;">
+          <span>🎴 Rút truyện</span>
+        </button>
+
+      </div>
+    </section>
+  `;
+
+  // 3. Hiển thị ra giao diện
+  rail.innerHTML = navHtml + dailyHtml;
+
+  // 4. Giữ lại lá bài đã rút hôm nay
+  var savedCard = JSON.parse(localStorage.getItem('vuonchu_today_card_data') || 'null');
+  if (savedCard && savedCard.date === new Date().toDateString()) {
+    if(document.getElementById('dailyCardTitle')) document.getElementById('dailyCardTitle').textContent = savedCard.story.ten || savedCard.story.title;
+    if(document.getElementById('dailyCardQuote')) document.getElementById('dailyCardQuote').textContent = savedCard.story.mota || savedCard.story.quote;
+    if(document.getElementById('dailyCardSymbol')) document.getElementById('dailyCardSymbol').textContent = savedCard.symbol;
+  }
 }
 function renderUser(){
   var s=$('#userSlot'); if(!s) return;
