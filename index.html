@@ -2280,12 +2280,13 @@ apply();
 })();
 </script>
   <script>
-  /* ===== ADD-ON: CHÌA KHÓA (TIỀN ẢO) + ĐIỂM DANH + CỬA HÀNG SỰ KIỆN =====
+ /* ===== ADD-ON: CHÌA KHÓA (TIỀN ẢO) + ĐIỂM DANH + CỬA HÀNG SỰ KIỆN =====
    Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
    - Thành viên đã đăng nhập thấy nút 🔑 trên thanh trên cùng (cạnh nhạc và hồ sơ). Bấm vào để điểm danh và mua đồ sự kiện.
    - Mỗi ngày điểm danh một lần, nhận ngẫu nhiên từ 1 đến 100 chìa khóa.
    - Cửa hàng đọc danh sách ở mục EVENTS bên dưới: bạn tự thêm, sửa, xóa món, đặt giá, giới hạn số lần mua, ngày mở và ngày đóng.
    - Mua xong sẽ có "mã đổi" để thành viên gửi cho quản trị viên nhận quà.
+   - Quản trị viên (cần có role-addon) thấy thêm ô tự thêm hoặc trừ chìa khóa cho riêng mình. Điểm danh vẫn như nhau với mọi người.
    LƯU Ý: dữ liệu lưu trong trình duyệt của từng người, chưa có máy chủ, nên chỉ phù hợp cho cộng đồng nhỏ tin nhau.
    Người rành kỹ thuật vẫn tự sửa số chìa khóa trên máy họ được. Muốn chống gian lận thật thì cần máy chủ (ví dụ Firebase). */
 (function(){
@@ -2315,6 +2316,7 @@ function addDays(s,n){var a=s.split('-'),d=new Date(+a[0],+a[1]-1,+a[2]+n);retur
 function vn(s){var a=String(s).split('-');return a.length===3?(+a[2])+'/'+(+a[1])+'/'+a[0]:s}
 function num(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
 function getUser(){var u=lsGet('vc_user');return u&&u.username?u:null}
+function isAdmin(){try{return !!(window.vcRole&&window.vcRole.get()==='admin')}catch(e){return false}}
 var tt=0;
 function say(m){var t=$('#toast');if(!t)return;t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},2800)}
 
@@ -2384,6 +2386,7 @@ css.textContent=
 '.vck-btn{width:100%;padding:11px 14px;border-radius:12px;border:0;background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);font:600 15px var(--f-ui,system-ui,sans-serif);cursor:pointer}.vck-btn[disabled]{opacity:.55;cursor:default}'+
 '.vck-days{display:flex;justify-content:space-between;gap:4px;margin:10px 0 2px}.vck-days span{flex:1;text-align:center;font-size:11px;color:var(--muted,#5A6B65)}.vck-days i{display:block;width:22px;height:22px;line-height:22px;border-radius:50%;margin:0 auto 3px;font-style:normal;font-size:12px;border:1px solid var(--line,#D9E3DD)}.vck-days .on i{background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);border-color:transparent}'+
 '.vck-sec{margin:14px 0 6px;font-weight:700;font-size:13.5px}'+
+'.vck-adm{display:flex;gap:6px;align-items:center}.vck-adm input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:1px solid var(--line,#D9E3DD);background:var(--bg,#fff);color:inherit;font:inherit}'+
 '.vck-it{display:grid;gap:4px;border:1px solid var(--line,#D9E3DD);border-radius:12px;padding:10px 12px;margin-bottom:8px}.vck-it .t{display:flex;justify-content:space-between;gap:8px;font-weight:600}.vck-it .d{font-size:12.5px;color:var(--muted,#5A6B65)}.vck-it .m{font-size:12px;color:var(--muted,#5A6B65)}'+
 '.vck-buy{justify-self:start;padding:7px 14px;border-radius:10px;border:1px solid var(--accent,#1D6B58);background:transparent;color:var(--accent,#1D6B58);font:600 13px var(--f-ui,system-ui,sans-serif);cursor:pointer}.vck-buy.arm{background:var(--accent,#1D6B58);color:var(--accent-ink,#fff)}.vck-buy[disabled]{opacity:.5;cursor:default;border-color:var(--line,#D9E3DD);color:var(--muted,#5A6B65)}'+
 '.vck-row{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line,#D9E3DD)}.vck-row code{font-weight:700;user-select:all}.vck-pos{color:var(--accent,#1D6B58);font-weight:700}.vck-neg{color:#B4531E;font-weight:700}'+
@@ -2421,6 +2424,10 @@ function render(){
   h+='<div class="vck-bal"><div class="n'+(lastGain?' vck-pop':'')+'" id="vckN">'+num(o.bal)+'</div><div class="s">Chuỗi điểm danh: '+streak(o)+' ngày · Tổng: '+o.days.length+' ngày</div></div>';
   h+='<button class="vck-btn" data-k="checkin"'+(done||rolling?' disabled':'')+'>'+(done?'✓ Hôm nay bạn đã điểm danh. Hẹn mai nhé!':'Điểm danh nhận '+MIN+' đến '+MAX+' chìa khóa')+'</button>';
   h+='<div class="vck-days" aria-label="7 ngày gần đây">'+days+'</div>';
+  if(isAdmin()){
+    h+='<div class="vck-sec">Công cụ quản trị viên (chỉ bạn thấy)</div><div class="vck-adm"><input type="number" id="vckGive" min="1" max="1000000" step="1" placeholder="Số chìa khóa" inputmode="numeric"><button class="vck-buy" data-k="admadd">+ Thêm</button><button class="vck-buy" data-k="admsub">− Trừ</button></div>'+
+       '<div class="vck-small" style="margin-top:4px">Chỉ tác động lên tài khoản của chính bạn. Điểm danh của mọi người vẫn giống nhau.</div>';
+  }
   h+='<div class="vck-sec">Cửa hàng sự kiện</div>';
   if(!EVENTS.length)h+='<div class="vck-small">Hiện chưa có món nào. Quản trị viên sẽ sớm thêm.</div>';
   EVENTS.forEach(function(it){
@@ -2471,6 +2478,13 @@ panel.addEventListener('click',function(e){
   var k=b.getAttribute('data-k');
   if(k==='close'){togglePanel(false)}
   else if(k==='checkin'){doCheckIn()}
+  else if(k==='admadd'||k==='admsub'){
+    if(!isAdmin()){say('Chỉ quản trị viên mới dùng được');return}
+    var inp=$('#vckGive',panel),n=inp?Math.floor(+inp.value):0;
+    if(!(n>=1&&n<=1000000)){say('Hãy nhập số từ 1 đến 1.000.000');return}
+    var ok=k==='admadd'?window.vcKeys.add(n,'Quản trị viên tự thêm'):window.vcKeys.spend(n,'Quản trị viên tự trừ');
+    if(ok){render();say((k==='admadd'?'Đã thêm ':'Đã trừ ')+num(n)+' chìa khóa')}else say('Không trừ được: số dư không đủ');
+  }
   else if(k==='buy'){
     var id=b.getAttribute('data-id');
     if(armed===id){
