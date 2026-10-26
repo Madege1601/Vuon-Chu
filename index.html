@@ -2279,5 +2279,233 @@ apply();
   });
 })();
 </script>
+  <script>
+  /* ===== ADD-ON: CHÌA KHÓA (TIỀN ẢO) + ĐIỂM DANH + CỬA HÀNG SỰ KIỆN =====
+   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
+   - Thành viên đã đăng nhập thấy nút 🔑 trên thanh trên cùng (cạnh nhạc và hồ sơ). Bấm vào để điểm danh và mua đồ sự kiện.
+   - Mỗi ngày điểm danh một lần, nhận ngẫu nhiên từ 1 đến 100 chìa khóa.
+   - Cửa hàng đọc danh sách ở mục EVENTS bên dưới: bạn tự thêm, sửa, xóa món, đặt giá, giới hạn số lần mua, ngày mở và ngày đóng.
+   - Mua xong sẽ có "mã đổi" để thành viên gửi cho quản trị viên nhận quà.
+   LƯU Ý: dữ liệu lưu trong trình duyệt của từng người, chưa có máy chủ, nên chỉ phù hợp cho cộng đồng nhỏ tin nhau.
+   Người rành kỹ thuật vẫn tự sửa số chìa khóa trên máy họ được. Muốn chống gian lận thật thì cần máy chủ (ví dụ Firebase). */
+(function(){
+'use strict';
+if(window.__vcKeys)return;window.__vcKeys=1;
+
+/* ===== CẤU HÌNH ===== */
+var MIN=1,MAX=100;   /* mỗi ngày nhận ngẫu nhiên từ MIN đến MAX chìa khóa */
+/* Cửa hàng sự kiện. Mỗi món:
+   id: tên ngắn không dấu, không trùng nhau | name: tên món | desc: mô tả ngắn | price: giá bằng chìa khóa
+   max: (không bắt buộc) mỗi người mua tối đa mấy lần | from, to: (không bắt buộc) ngày mở và đóng, viết dạng 'năm-tháng-ngày' */
+var EVENTS=[
+  {id:'khung-vang', name:'Khung avatar vàng', desc:'Quà nhỏ cho người bạn thích truyện.', price:150, max:1},
+  {id:'ve-dem-doc', name:'Vé Đêm đọc truyện', desc:'Tham gia buổi đọc truyện chung của cộng đồng.', price:300, max:1, from:'2026-11-01', to:'2026-11-30'},
+  {id:'goi-y-truyen', name:'Đặt hàng một truyện bạn muốn đọc', desc:'Quản trị viên sẽ ưu tiên tìm và đăng truyện bạn chọn.', price:500}
+];
+
+/* ===== TIỆN ÍCH ===== */
+function $(s,r){return (r||document).querySelector(s)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function p2(n){return (n<10?'0':'')+n}
+function ymd(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())}
+function today(){return ymd(new Date())}
+function addDays(s,n){var a=s.split('-'),d=new Date(+a[0],+a[1]-1,+a[2]+n);return ymd(d)}
+function vn(s){var a=String(s).split('-');return a.length===3?(+a[2])+'/'+(+a[1])+'/'+a[0]:s}
+function num(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
+function getUser(){var u=lsGet('vc_user');return u&&u.username?u:null}
+var tt=0;
+function say(m){var t=$('#toast');if(!t)return;t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},2800)}
+
+/* ===== DỮ LIỆU THEO TỪNG TÀI KHOẢN ===== */
+function load(u){
+  var o=lsGet('vck_'+u)||{};
+  o.bal=Math.max(0,Math.floor(+o.bal||0));o.last=o.last||'';
+  o.days=Array.isArray(o.days)?o.days:[];o.log=Array.isArray(o.log)?o.log:[];o.buy=Array.isArray(o.buy)?o.buy:[];
+  return o;
+}
+function save(u,o){lsSet('vck_'+u,o);try{window.dispatchEvent(new CustomEvent('vc:keys',{detail:{user:u,balance:o.bal}}))}catch(e){}}
+function roll(){
+  var r;
+  try{var a=new Uint32Array(1);crypto.getRandomValues(a);r=a[0]/4294967296}catch(e){r=Math.random()}
+  return MIN+Math.floor(r*(MAX-MIN+1));
+}
+function streak(o){
+  var t=today(),set={},i,c=0;
+  o.days.forEach(function(d){set[d]=1});
+  var d=set[t]?t:addDays(t,-1);
+  while(set[d]){c++;d=addDays(d,-1)}
+  return c;
+}
+function checkIn(){
+  var u=getUser();if(!u)return null;
+  var o=load(u.username),t=today();
+  if(o.last===t)return null;
+  var n=roll();
+  o.bal+=n;o.last=t;o.days.push(t);if(o.days.length>90)o.days=o.days.slice(-90);
+  o.log.unshift({t:Date.now(),d:n,r:'Điểm danh'});o.log=o.log.slice(0,30);
+  save(u.username,o);return n;
+}
+function mkCode(u,id,t){
+  var s=u+'|'+id+'|'+t,h=5381,i;
+  for(i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))>>>0;
+  return 'VC-'+h.toString(36).toUpperCase().padStart(6,'0').slice(-6);
+}
+function itemById(id){for(var i=0;i<EVENTS.length;i++)if(EVENTS[i].id===id)return EVENTS[i];return null}
+function status(it,o){
+  var t=today(),c=o.buy.filter(function(b){return b.id===it.id}).length;
+  if(it.from&&t<it.from)return 'soon';
+  if(it.to&&t>it.to)return 'ended';
+  if(it.max&&c>=it.max)return 'max';
+  if(o.bal<it.price)return 'poor';
+  return 'ok';
+}
+function buy(id){
+  var u=getUser(),it=itemById(id);if(!u||!it)return null;
+  var o=load(u.username);if(status(it,o)!=='ok')return null;
+  var t=Date.now(),code=mkCode(u.username,id,t);
+  o.bal-=it.price;
+  o.buy.unshift({id:id,n:it.name,p:it.price,t:t,c:code});o.buy=o.buy.slice(0,50);
+  o.log.unshift({t:t,d:-it.price,r:'Mua: '+it.name});o.log=o.log.slice(0,30);
+  save(u.username,o);return code;
+}
+
+/* ===== CSS ===== */
+var css=document.createElement('style');
+css.textContent=
+'.vck-chip{flex:none;display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line,#D9E3DD);background:var(--surface,#fff);color:var(--ink,#1B2924);font:600 14px/1 var(--f-ui,system-ui,sans-serif);cursor:pointer;position:relative}'+
+'.vck-chip:hover{background:var(--soft,#E5EFEA)}.vck-chip .dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#D9534F;border:2px solid var(--bg,#F4F7F4)}'+
+'.vck-chip.fx{position:fixed;right:12px;top:10px;z-index:99984}'+
+'.vck-panel{position:fixed;right:max(8px,env(safe-area-inset-right,0px));top:62px;z-index:99987;width:min(360px,calc(100vw - 16px));max-height:calc(100vh - 80px);overflow:auto;background:var(--surface,#fff);color:var(--ink,#1B2924);border:1px solid var(--line,#D9E3DD);border-radius:18px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.28);font:14px/1.45 var(--f-ui,system-ui,sans-serif);transition:opacity .18s,transform .18s}'+
+'.vck-panel.shut{opacity:0;transform:translateY(-8px);pointer-events:none;visibility:hidden}.vck-panel *{box-sizing:border-box}'+
+'.vck-h{display:flex;justify-content:space-between;align-items:center}.vck-h b{font-size:15px}.vck-x{border:0;background:none;color:inherit;font-size:20px;cursor:pointer;padding:2px 8px}'+
+'.vck-bal{text-align:center;padding:12px 8px;margin:8px 0;border-radius:14px;background:var(--soft,#E5EFEA)}.vck-bal .n{font-size:34px;font-weight:700;line-height:1.1;color:var(--accent,#1D6B58)}.vck-bal .s{font-size:12.5px;color:var(--muted,#5A6B65)}'+
+'.vck-btn{width:100%;padding:11px 14px;border-radius:12px;border:0;background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);font:600 15px var(--f-ui,system-ui,sans-serif);cursor:pointer}.vck-btn[disabled]{opacity:.55;cursor:default}'+
+'.vck-days{display:flex;justify-content:space-between;gap:4px;margin:10px 0 2px}.vck-days span{flex:1;text-align:center;font-size:11px;color:var(--muted,#5A6B65)}.vck-days i{display:block;width:22px;height:22px;line-height:22px;border-radius:50%;margin:0 auto 3px;font-style:normal;font-size:12px;border:1px solid var(--line,#D9E3DD)}.vck-days .on i{background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);border-color:transparent}'+
+'.vck-sec{margin:14px 0 6px;font-weight:700;font-size:13.5px}'+
+'.vck-it{display:grid;gap:4px;border:1px solid var(--line,#D9E3DD);border-radius:12px;padding:10px 12px;margin-bottom:8px}.vck-it .t{display:flex;justify-content:space-between;gap:8px;font-weight:600}.vck-it .d{font-size:12.5px;color:var(--muted,#5A6B65)}.vck-it .m{font-size:12px;color:var(--muted,#5A6B65)}'+
+'.vck-buy{justify-self:start;padding:7px 14px;border-radius:10px;border:1px solid var(--accent,#1D6B58);background:transparent;color:var(--accent,#1D6B58);font:600 13px var(--f-ui,system-ui,sans-serif);cursor:pointer}.vck-buy.arm{background:var(--accent,#1D6B58);color:var(--accent-ink,#fff)}.vck-buy[disabled]{opacity:.5;cursor:default;border-color:var(--line,#D9E3DD);color:var(--muted,#5A6B65)}'+
+'.vck-row{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line,#D9E3DD)}.vck-row code{font-weight:700;user-select:all}.vck-pos{color:var(--accent,#1D6B58);font-weight:700}.vck-neg{color:#B4531E;font-weight:700}'+
+'.vck-small{font-size:11.5px;color:var(--muted,#5A6B65);margin-top:10px}.vck-pop{animation:vck-pop .5s ease}@keyframes vck-pop{0%{transform:scale(.7)}60%{transform:scale(1.12)}100%{transform:scale(1)}}'+
+'@media (max-width:440px){.vck-chip{height:32px;padding:0 8px;font-size:13px;gap:3px}.topbar{gap:4px!important;padding-left:10px!important;padding-right:10px!important}}@media (max-width:400px){.topbar .brand{font-size:0!important}.topbar .brand i{font-size:15px}}@media (prefers-reduced-motion:reduce){.vck-pop{animation:none}}';
+document.head.appendChild(css);
+
+/* ===== NÚT TRÊN THANH TRÊN CÙNG ===== */
+var chip=document.createElement('button');chip.type='button';chip.className='vck-chip';chip.setAttribute('aria-label','Chìa khóa');chip.style.display='none';
+var panel=document.createElement('div');panel.className='vck-panel shut';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Chìa khóa');
+var uslot=document.getElementById('userSlot'),tbar=document.querySelector('.topbar');
+if(uslot&&tbar&&tbar.contains(uslot)){var anchor=uslot;while(anchor.parentNode!==tbar)anchor=anchor.parentNode;tbar.insertBefore(chip,anchor)}
+else{chip.className+=' fx';document.body.appendChild(chip)}
+document.body.appendChild(panel);
+
+var armed=null,armT=0,rolling=false,lastGain=0;
+function refreshChip(){
+  var u=getUser();
+  if(!u){chip.style.display='none';if(!panel.classList.contains('shut'))panel.classList.add('shut');return}
+  var o=load(u.username);
+  chip.style.display='inline-flex';
+  chip.innerHTML='<span aria-hidden="true">🔑</span><span>'+num(o.bal)+'</span>'+(o.last!==today()?'<span class="dot" title="Chưa điểm danh hôm nay"></span>':'');
+  chip.setAttribute('aria-label','Chìa khóa: '+o.bal+(o.last!==today()?'. Chưa điểm danh hôm nay':''));
+}
+
+/* ===== BẢNG ĐIỂM DANH + CỬA HÀNG ===== */
+function render(){
+  var u=getUser();if(!u){panel.innerHTML='';return}
+  var o=load(u.username),t=today(),done=o.last===t,i,h='';
+  var set={};o.days.forEach(function(d){set[d]=1});
+  var days='';
+  var wd=['CN','T2','T3','T4','T5','T6','T7'];
+  for(i=6;i>=0;i--){var d=addDays(t,-i),dt=new Date(d.split('-')[0],d.split('-')[1]-1,d.split('-')[2]);days+='<span class="'+(set[d]?'on':'')+'"><i>'+(set[d]?'✓':'')+'</i>'+(i===0?'Nay':wd[dt.getDay()])+'</span>'}
+  h+='<div class="vck-h"><b>🔑 Chìa khóa của '+esc(u.name||u.username)+'</b><button class="vck-x" data-k="close" aria-label="Đóng">×</button></div>';
+  h+='<div class="vck-bal"><div class="n'+(lastGain?' vck-pop':'')+'" id="vckN">'+num(o.bal)+'</div><div class="s">Chuỗi điểm danh: '+streak(o)+' ngày · Tổng: '+o.days.length+' ngày</div></div>';
+  h+='<button class="vck-btn" data-k="checkin"'+(done||rolling?' disabled':'')+'>'+(done?'✓ Hôm nay bạn đã điểm danh. Hẹn mai nhé!':'Điểm danh nhận '+MIN+' đến '+MAX+' chìa khóa')+'</button>';
+  h+='<div class="vck-days" aria-label="7 ngày gần đây">'+days+'</div>';
+  h+='<div class="vck-sec">Cửa hàng sự kiện</div>';
+  if(!EVENTS.length)h+='<div class="vck-small">Hiện chưa có món nào. Quản trị viên sẽ sớm thêm.</div>';
+  EVENTS.forEach(function(it){
+    var s=status(it,o),cnt=o.buy.filter(function(b){return b.id===it.id}).length;
+    var lab=s==='ok'?(armed===it.id?'Bấm lần nữa để xác nhận':'Mua · '+num(it.price)+' 🔑'):s==='poor'?'Chưa đủ chìa khóa (cần '+num(it.price)+')':s==='max'?'Bạn đã mua đủ':s==='soon'?'Mở từ '+vn(it.from):'Đã kết thúc';
+    var meta=[];if(it.max)meta.push('Tối đa '+it.max+' lần/người'+(cnt?' · bạn đã mua '+cnt:''));if(it.from||it.to)meta.push('Thời gian: '+(it.from?vn(it.from):'…')+' đến '+(it.to?vn(it.to):'…'));
+    h+='<div class="vck-it"><div class="t"><span>'+esc(it.name)+'</span><span>'+num(it.price)+' 🔑</span></div>'+(it.desc?'<div class="d">'+esc(it.desc)+'</div>':'')+(meta.length?'<div class="m">'+esc(meta.join(' · '))+'</div>':'')+
+       '<button class="vck-buy'+(armed===it.id?' arm':'')+'" data-k="buy" data-id="'+esc(it.id)+'"'+(s==='ok'?'':' disabled')+'>'+esc(lab)+'</button></div>';
+  });
+  if(o.buy.length){
+    h+='<div class="vck-sec">Đã mua (gửi mã cho quản trị viên để nhận quà)</div>';
+    o.buy.slice(0,8).forEach(function(b){h+='<div class="vck-row"><span>'+esc(b.n)+'<br><small>'+vn(ymd(new Date(b.t)))+'</small></span><code>'+esc(b.c)+'</code></div>'});
+  }
+  if(o.log.length){
+    h+='<div class="vck-sec">Lịch sử gần đây</div>';
+    o.log.slice(0,6).forEach(function(l){h+='<div class="vck-row"><span>'+esc(l.r)+'</span><span class="'+(l.d>0?'vck-pos':'vck-neg')+'">'+(l.d>0?'+':'')+num(l.d)+'</span></div>'});
+  }
+  h+='<div class="vck-small">Chìa khóa chỉ lưu trong trình duyệt này, gắn với tài khoản đăng nhập của bạn.</div>';
+  panel.innerHTML=h;lastGain=0;
+}
+function togglePanel(open){
+  var shut=panel.classList.contains('shut');
+  if(open===undefined)open=shut;
+  if(open){
+    if(!getUser())return;
+    render();var r=(tbar||document.body).getBoundingClientRect();panel.style.top=Math.max(8,(tbar?r.bottom:56)+6)+'px';
+  }
+  panel.classList.toggle('shut',!open);
+}
+function doCheckIn(){
+  if(rolling)return;
+  var u=getUser();if(!u)return;
+  var o=load(u.username);if(o.last===today()){render();return}
+  rolling=true;render();
+  var n=$('#vckN',panel),k=0,reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var iv=setInterval(function(){
+    k++;if(n)n.textContent=(1+Math.floor(Math.random()*MAX));
+    if(k>=(reduce?1:12)){
+      clearInterval(iv);
+      var got=checkIn();rolling=false;lastGain=got||0;
+      refreshChip();render();
+      if(got)say('Điểm danh thành công: +'+got+' chìa khóa 🔑');
+    }
+  },70);
+}
+panel.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-k]');if(!b)return;
+  var k=b.getAttribute('data-k');
+  if(k==='close'){togglePanel(false)}
+  else if(k==='checkin'){doCheckIn()}
+  else if(k==='buy'){
+    var id=b.getAttribute('data-id');
+    if(armed===id){
+      armed=null;clearTimeout(armT);
+      var code=buy(id);
+      if(code){refreshChip();render();say('Mua thành công! Mã đổi của bạn: '+code)}else{render();say('Không mua được món này')}
+    }else{
+      armed=id;clearTimeout(armT);armT=setTimeout(function(){armed=null;if(!panel.classList.contains('shut'))render()},4000);render();
+    }
+  }
+});
+chip.addEventListener('click',function(){togglePanel()});
+document.addEventListener('click',function(e){
+  var path=e.composedPath?e.composedPath():[];
+  if(!panel.classList.contains('shut')&&path.indexOf(panel)<0&&path.indexOf(chip)<0&&!panel.contains(e.target)&&!chip.contains(e.target))togglePanel(false);
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')togglePanel(false)});
+
+/* ===== THEO DÕI ĐĂNG NHẬP / ĐĂNG XUẤT ===== */
+var sched=false;
+function onChange(){if(sched)return;sched=true;Promise.resolve().then(function(){sched=false;refreshChip();if(!panel.classList.contains('shut'))render()})}
+if(uslot)new MutationObserver(onChange).observe(uslot,{childList:true,subtree:true});
+window.addEventListener('storage',onChange);
+setInterval(refreshChip,60000);  /* qua nửa đêm thì chấm đỏ "chưa điểm danh" tự hiện lại */
+refreshChip();
+
+/* ===== CHO CÁC SCRIPT KHÁC DÙNG ===== */
+window.vcKeys={
+  balance:function(){var u=getUser();return u?load(u.username).bal:0},
+  add:function(n,why){var u=getUser();n=Math.floor(+n);if(!u||!(n>0))return false;var o=load(u.username);o.bal+=n;o.log.unshift({t:Date.now(),d:n,r:why||'Thưởng'});o.log=o.log.slice(0,30);save(u.username,o);refreshChip();return true},
+  spend:function(n,why){var u=getUser();n=Math.floor(+n);if(!u||!(n>0))return false;var o=load(u.username);if(o.bal<n)return false;o.bal-=n;o.log.unshift({t:Date.now(),d:-n,r:why||'Chi tiêu'});o.log=o.log.slice(0,30);save(u.username,o);refreshChip();return true},
+  open:function(){togglePanel(true)},
+  roll:roll
+};
+})();
+</script>
 </body>
 </html>
