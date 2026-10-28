@@ -2280,10 +2280,10 @@ apply();
 })();
 </script>
   <script>
- /* ===== ADD-ON: CHÌA KHÓA (TIỀN ẢO) + ĐIỂM DANH + CỬA HÀNG SỰ KIỆN =====
+/* ===== ADD-ON: CHÌA KHÓA (TIỀN ẢO) + ĐIỂM DANH + CỬA HÀNG SỰ KIỆN =====
    Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
    - Thành viên đã đăng nhập thấy nút 🔑 trên thanh trên cùng (cạnh nhạc và hồ sơ). Bấm vào để điểm danh và mua đồ sự kiện.
-   - Mỗi ngày điểm danh một lần, nhận ngẫu nhiên từ 1 đến 100 chìa khóa.
+   - Mỗi ngày điểm danh một lần, nhận ngẫu nhiên từ 1 đến 100 chìa khóa. Mọi ngày đã điểm danh và số chìa khóa nhận được đều được lưu, xem lại trên lịch theo tháng.
    - Cửa hàng đọc danh sách ở mục EVENTS bên dưới: bạn tự thêm, sửa, xóa món, đặt giá, giới hạn số lần mua, ngày mở và ngày đóng.
    - Mua xong sẽ có "mã đổi" để thành viên gửi cho quản trị viên nhận quà.
    - Quản trị viên (cần có role-addon) thấy thêm ô tự thêm hoặc trừ chìa khóa cho riêng mình. Điểm danh vẫn như nhau với mọi người.
@@ -2324,7 +2324,7 @@ function say(m){var t=$('#toast');if(!t)return;t.textContent=m;t.hidden=false;cl
 function load(u){
   var o=lsGet('vck_'+u)||{};
   o.bal=Math.max(0,Math.floor(+o.bal||0));o.last=o.last||'';
-  o.days=Array.isArray(o.days)?o.days:[];o.log=Array.isArray(o.log)?o.log:[];o.buy=Array.isArray(o.buy)?o.buy:[];
+  o.days=Array.isArray(o.days)?o.days:[];o.got=(o.got&&typeof o.got==='object'&&!Array.isArray(o.got))?o.got:{};o.log=Array.isArray(o.log)?o.log:[];o.buy=Array.isArray(o.buy)?o.buy:[];
   return o;
 }
 function save(u,o){lsSet('vck_'+u,o);try{window.dispatchEvent(new CustomEvent('vc:keys',{detail:{user:u,balance:o.bal}}))}catch(e){}}
@@ -2345,7 +2345,8 @@ function checkIn(){
   var o=load(u.username),t=today();
   if(o.last===t)return null;
   var n=roll();
-  o.bal+=n;o.last=t;o.days.push(t);if(o.days.length>90)o.days=o.days.slice(-90);
+  o.bal+=n;o.last=t;o.days.push(t);o.got[t]=n;
+  if(o.days.length>1100){var old=o.days.slice(0,o.days.length-1100);o.days=o.days.slice(-1100);old.forEach(function(d){delete o.got[d]})}
   o.log.unshift({t:Date.now(),d:n,r:'Điểm danh'});o.log=o.log.slice(0,30);
   save(u.username,o);return n;
 }
@@ -2384,7 +2385,8 @@ css.textContent=
 '.vck-h{display:flex;justify-content:space-between;align-items:center}.vck-h b{font-size:15px}.vck-x{border:0;background:none;color:inherit;font-size:20px;cursor:pointer;padding:2px 8px}'+
 '.vck-bal{text-align:center;padding:12px 8px;margin:8px 0;border-radius:14px;background:var(--soft,#E5EFEA)}.vck-bal .n{font-size:34px;font-weight:700;line-height:1.1;color:var(--accent,#1D6B58)}.vck-bal .s{font-size:12.5px;color:var(--muted,#5A6B65)}'+
 '.vck-btn{width:100%;padding:11px 14px;border-radius:12px;border:0;background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);font:600 15px var(--f-ui,system-ui,sans-serif);cursor:pointer}.vck-btn[disabled]{opacity:.55;cursor:default}'+
-'.vck-days{display:flex;justify-content:space-between;gap:4px;margin:10px 0 2px}.vck-days span{flex:1;text-align:center;font-size:11px;color:var(--muted,#5A6B65)}.vck-days i{display:block;width:22px;height:22px;line-height:22px;border-radius:50%;margin:0 auto 3px;font-style:normal;font-size:12px;border:1px solid var(--line,#D9E3DD)}.vck-days .on i{background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);border-color:transparent}'+
+'.vck-cal{margin:10px 0 2px}.vck-calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:600}.vck-calh button{border:1px solid var(--line,#D9E3DD);background:transparent;color:inherit;border-radius:8px;width:32px;height:30px;font-size:16px;cursor:pointer}.vck-calh button[disabled]{opacity:.35;cursor:default}'+
+'.vck-cg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}.vck-cg .w{font-size:11px;color:var(--muted,#5A6B65);padding:2px 0}.vck-cg .d{border:1px solid transparent;border-radius:8px;min-height:38px;padding:3px 0 2px;font-size:12px;line-height:1.15;color:var(--muted,#5A6B65);display:flex;flex-direction:column;align-items:center;justify-content:center;background:transparent}.vck-cg .d small{font-size:9.5px;opacity:.95}.vck-cg .d.on{background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);font-weight:700;cursor:pointer}.vck-cg .d.on.sel{box-shadow:0 0 0 2px var(--ink,#1B2924) inset}.vck-cg .d.now{border-color:var(--accent,#1D6B58)}.vck-cg .d.fut{opacity:.4}.vck-calinfo{font-size:12.5px;color:var(--muted,#5A6B65);margin-top:6px;min-height:18px;text-align:center}'+
 '.vck-sec{margin:14px 0 6px;font-weight:700;font-size:13.5px}'+
 '.vck-adm{display:flex;gap:6px;align-items:center}.vck-adm input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:1px solid var(--line,#D9E3DD);background:var(--bg,#fff);color:inherit;font:inherit}'+
 '.vck-it{display:grid;gap:4px;border:1px solid var(--line,#D9E3DD);border-radius:12px;padding:10px 12px;margin-bottom:8px}.vck-it .t{display:flex;justify-content:space-between;gap:8px;font-weight:600}.vck-it .d{font-size:12.5px;color:var(--muted,#5A6B65)}.vck-it .m{font-size:12px;color:var(--muted,#5A6B65)}'+
@@ -2402,7 +2404,7 @@ if(uslot&&tbar&&tbar.contains(uslot)){var anchor=uslot;while(anchor.parentNode!=
 else{chip.className+=' fx';document.body.appendChild(chip)}
 document.body.appendChild(panel);
 
-var armed=null,armT=0,rolling=false,lastGain=0;
+var armed=null,armT=0,rolling=false,lastGain=0,calOff=0,calSel='';
 function refreshChip(){
   var u=getUser();
   if(!u){chip.style.display='none';if(!panel.classList.contains('shut'))panel.classList.add('shut');return}
@@ -2412,18 +2414,32 @@ function refreshChip(){
   chip.setAttribute('aria-label','Chìa khóa: '+o.bal+(o.last!==today()?'. Chưa điểm danh hôm nay':''));
 }
 
+
+/* ===== LỊCH ĐIỂM DANH (lưu mọi ngày đã điểm danh) ===== */
+function calHtml(o,t){
+  var set={};o.days.forEach(function(d){set[d]=1});
+  var td=t.split('-'),base=new Date(+td[0],+td[1]-1+calOff,1),y=base.getFullYear(),m=base.getMonth();
+  var first=(base.getDay()+6)%7,dim=new Date(y,m+1,0).getDate(),i,cells='',cnt=0,sum=0,pre=y+'-'+p2(m+1)+'-';
+  ['T2','T3','T4','T5','T6','T7','CN'].forEach(function(w){cells+='<div class="w">'+w+'</div>'});
+  for(i=0;i<first;i++)cells+='<div></div>';
+  for(i=1;i<=dim;i++){
+    var d=pre+p2(i),on=!!set[d],cls='d'+(on?' on':'')+(d===t?' now':'')+(d>t?' fut':'')+(d===calSel?' sel':'');
+    if(on){cnt++;if(o.got[d])sum+=o.got[d]}
+    cells+=(on?'<button type="button" class="'+cls+'" data-k="day" data-d="'+d+'" aria-label="Ngày '+vn(d)+' đã điểm danh">':'<div class="'+cls+'">')+i+(on?'<small>'+(o.got[d]?'+'+o.got[d]:'✓')+'</small></button>':'</div>');
+  }
+  var info=calSel&&set[calSel]?('Ngày '+vn(calSel)+': '+(o.got[calSel]?'nhận '+o.got[calSel]+' chìa khóa':'đã điểm danh')):('Tháng này: '+cnt+' ngày điểm danh'+(sum?' · nhận '+num(sum)+' chìa khóa':''));
+  return '<div class="vck-cal"><div class="vck-calh"><button type="button" data-k="calprev" aria-label="Tháng trước"'+(calOff<=-36?' disabled':'')+'>‹</button><span>Tháng '+(m+1)+'/'+y+'</span><button type="button" data-k="calnext" aria-label="Tháng sau"'+(calOff>=0?' disabled':'')+'>›</button></div><div class="vck-cg">'+cells+'</div><div class="vck-calinfo" id="vckCalInfo">'+esc(info)+'</div></div>';
+}
+
 /* ===== BẢNG ĐIỂM DANH + CỬA HÀNG ===== */
 function render(){
   var u=getUser();if(!u){panel.innerHTML='';return}
   var o=load(u.username),t=today(),done=o.last===t,i,h='';
   var set={};o.days.forEach(function(d){set[d]=1});
-  var days='';
-  var wd=['CN','T2','T3','T4','T5','T6','T7'];
-  for(i=6;i>=0;i--){var d=addDays(t,-i),dt=new Date(d.split('-')[0],d.split('-')[1]-1,d.split('-')[2]);days+='<span class="'+(set[d]?'on':'')+'"><i>'+(set[d]?'✓':'')+'</i>'+(i===0?'Nay':wd[dt.getDay()])+'</span>'}
   h+='<div class="vck-h"><b>🔑 Chìa khóa của '+esc(u.name||u.username)+'</b><button class="vck-x" data-k="close" aria-label="Đóng">×</button></div>';
   h+='<div class="vck-bal"><div class="n'+(lastGain?' vck-pop':'')+'" id="vckN">'+num(o.bal)+'</div><div class="s">Chuỗi điểm danh: '+streak(o)+' ngày · Tổng: '+o.days.length+' ngày</div></div>';
   h+='<button class="vck-btn" data-k="checkin"'+(done||rolling?' disabled':'')+'>'+(done?'✓ Hôm nay bạn đã điểm danh. Hẹn mai nhé!':'Điểm danh nhận '+MIN+' đến '+MAX+' chìa khóa')+'</button>';
-  h+='<div class="vck-days" aria-label="7 ngày gần đây">'+days+'</div>';
+  h+=calHtml(o,t);
   if(isAdmin()){
     h+='<div class="vck-sec">Công cụ quản trị viên (chỉ bạn thấy)</div><div class="vck-adm"><input type="number" id="vckGive" min="1" max="1000000" step="1" placeholder="Số chìa khóa" inputmode="numeric"><button class="vck-buy" data-k="admadd">+ Thêm</button><button class="vck-buy" data-k="admsub">− Trừ</button></div>'+
        '<div class="vck-small" style="margin-top:4px">Chỉ tác động lên tài khoản của chính bạn. Điểm danh của mọi người vẫn giống nhau.</div>';
@@ -2453,7 +2469,7 @@ function togglePanel(open){
   if(open===undefined)open=shut;
   if(open){
     if(!getUser())return;
-    render();var r=(tbar||document.body).getBoundingClientRect();panel.style.top=Math.max(8,(tbar?r.bottom:56)+6)+'px';
+    calOff=0;calSel='';render();var r=(tbar||document.body).getBoundingClientRect();panel.style.top=Math.max(8,(tbar?r.bottom:56)+6)+'px';
   }
   panel.classList.toggle('shut',!open);
 }
@@ -2477,6 +2493,9 @@ panel.addEventListener('click',function(e){
   var b=e.target.closest&&e.target.closest('[data-k]');if(!b)return;
   var k=b.getAttribute('data-k');
   if(k==='close'){togglePanel(false)}
+  else if(k==='calprev'){if(calOff>-36){calOff--;calSel='';render()}}
+  else if(k==='calnext'){if(calOff<0){calOff++;calSel='';render()}}
+  else if(k==='day'){var dd=b.getAttribute('data-d');calSel=(calSel===dd?'':dd);render()}
   else if(k==='checkin'){doCheckIn()}
   else if(k==='admadd'||k==='admsub'){
     if(!isAdmin()){say('Chỉ quản trị viên mới dùng được');return}
@@ -2519,6 +2538,112 @@ window.vcKeys={
   open:function(){togglePanel(true)},
   roll:roll
 };
+})();
+</script>
+  <script>
+    /* ===== ADD-ON: GIAO DIỆN "BIỂN SÂU" =====
+   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
+   - Nền xanh biển chuyển dần xuống gần đen, chữ màu kem, thẻ truyện như kính mờ, nút bo tròn, tiêu đề kiểu Didot.
+   - Nút tròn 🌊 / ☀ ở góc trái dưới để người đọc đổi giữa "Biển sâu" và giao diện mặc định. Lựa chọn được nhớ trên từng máy.
+   - Muốn đổi màu hay chữ: sửa ở mục CẤU HÌNH ngay bên dưới. */
+(function(){
+'use strict';
+if(window.__vcTheme)return;window.__vcTheme=1;
+
+/* ===== CẤU HÌNH ===== */
+var TAGLINE='một đàn truyện · sâu sáu mươi sải';        /* dòng chữ nhỏ dưới tên Vườn Chữ ở trang chủ. Để '' nếu không muốn */
+var DEPTH  ='— vùng vực thẳm · 4.000 m —';              /* dòng chữ ở chân trang. Để '' nếu không muốn */
+var DEFAULT_ON=true;                                    /* true: ai vào web lần đầu cũng thấy Biển sâu. false: mặc định giao diện cũ */
+var C={                                                 /* bảng màu. Đổi mã màu ở đây */
+  sky:'#1668bd',       /* màu mặt nước ở đầu trang */
+  deep:'#02060f',      /* màu đáy biển ở cuối trang */
+  card:'#071a33',      /* nền khung nổi (hộp thoại, menu) */
+  ink:'#e8eee9',       /* chữ thường */
+  title:'#f3f7dc',     /* chữ tiêu đề (màu kem) */
+  muted:'#d3e1eb',     /* chữ phụ */
+  link:'#b4dcff',      /* màu link và nút chính */
+  teal:'#7fe3d4'       /* điểm nhấn xanh ngọc */
+};
+
+/* ===== TIỆN ÍCH ===== */
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function q(s){return '"'+String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"'}
+var H='html[data-vctheme="deep"] ';
+
+/* ===== CSS ===== */
+var css=[
+ H+'{color-scheme:dark;--bg:'+C.deep+';--surface:'+C.card+';--ink:'+C.ink+';--muted:'+C.muted+';--line:rgba(157,209,255,.22);--accent:'+C.link+';--accent-ink:#06284f;--soft:#0e3466;--warn:#ffb3a7;--topbar:rgba(3,16,38,.82);--shadow:0 22px 48px rgba(0,0,0,.55);--f-display:Didot,"Bodoni 72","Bodoni MT","Playfair Display","Noto Serif",Georgia,serif}',
+ H+'body{background:linear-gradient(180deg,'+C.sky+' 0,#115aa8 130px,#0c4889 330px,#093a70 700px,#072b55 1100px,#051e3e 1700px,'+C.deep+' 2700px) no-repeat,'+C.deep+';background-size:100% 2700px;color:var(--ink)}',
+ H+'h1,'+H+'h2,'+H+'h3{color:'+C.title+';font-weight:400;letter-spacing:.01em}',
+ H+'a{color:'+C.link+'}',
+ H+'.topbar{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}',
+ H+'.brand{color:'+C.title+'}',
+ H+'.iconbtn{background:rgba(3,20,46,.5)}',
+ H+'.iconbtn:hover{border-color:'+C.title+'}',
+ /* nút bo tròn */
+ H+'.btn,'+H+'.tabs button,'+H+'.chnav .btn{border-radius:999px;letter-spacing:.04em}',
+ H+'.btn{background:'+C.link+';border-color:'+C.link+';color:#06284f}',
+ H+'.btn:hover{background:'+C.title+';border-color:'+C.title+';box-shadow:0 0 22px rgba(243,247,220,.35)}',
+ H+'.btn.ghost{background:rgba(3,20,46,.42);color:'+C.title+';border-color:rgba(231,235,210,.42);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}',
+ H+'.btn.ghost:hover{background:'+C.title+';color:#06284f}',
+ H+'.btn.danger{color:var(--warn);border-color:var(--warn);background:transparent}',
+ H+'.tabs button{background:rgba(3,20,46,.5)}',
+ H+'.tabs button[aria-pressed="true"]{background:'+C.link+';color:#06284f}',
+ /* khung kính mờ */
+ H+'.card,'+H+'.panel,'+H+'.hero,'+H+'.mrow,'+H+'.rank li,'+H+'.chapters button,'+H+'details.faq{background:linear-gradient(180deg,rgba(14,52,102,.88),rgba(3,16,38,.92));border-color:rgba(157,209,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}',
+ H+'.card{border-radius:20px}',
+ H+'.card:hover,'+H+'.chapters button:hover{border-color:rgba(157,209,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 0 34px rgba(24,116,210,.3)}',
+ H+'.card .meta b{color:'+C.title+'}',
+ H+'.chip{background:rgba(3,20,46,.6);color:'+C.teal+';border-color:rgba(127,227,212,.35)}',
+ H+'.rail button:hover,'+H+'.rail button[aria-current="page"]{background:rgba(24,116,210,.35);color:#fff}',
+ H+'.rail .grp{color:'+C.teal+'}',
+ H+'.sec-title button{color:'+C.link+'}',
+ H+'input[type=text],'+H+'input[type=password],'+H+'input[type=search],'+H+'input[type=number],'+H+'select,'+H+'textarea{background:rgba(2,12,30,.6);border-color:rgba(157,209,255,.3);color:'+C.title+';border-radius:14px;box-shadow:inset 0 2px 10px rgba(0,0,0,.35)}',
+ H+'input:focus,'+H+'textarea:focus,'+H+'select:focus{border-color:'+C.link+';outline:none;box-shadow:inset 0 2px 10px rgba(0,0,0,.35),0 0 0 4px rgba(24,116,210,.3)}',
+ H+'.sheet,'+H+'.pop{background:'+C.card+';border-radius:20px}',
+ H+'.modal{background:rgba(1,6,16,.7)}',
+ H+'.msg .b{background:rgba(14,52,102,.75)}',
+ H+'.toast{background:'+C.title+';color:#06284f}',
+ H+'.drop:hover,'+H+'.drop.over{background:rgba(24,116,210,.25)}',
+ H+'.reader{border-color:rgba(157,209,255,.2)}',
+ H+'.reader h1,'+H+'.reader h2,'+H+'.reader h3,'+H+'.reader a{color:inherit}',
+ H+'.badge{color:#2a0d05}',
+ /* trang chủ: tên, dòng chữ nhỏ, tia sáng từ mặt nước */
+ H+'.hero{text-align:center;justify-items:center;padding:38px 24px}',
+ H+'.hero p{margin-inline:auto}',
+ H+'.hero .row{justify-content:center}',
+ H+'.hero .glyph{color:rgba(157,209,255,.07)}',
+ H+'.hero h1{text-transform:uppercase;letter-spacing:.14em;font-size:clamp(26px,6vw,42px);color:'+C.title+';text-shadow:0 2px 22px rgba(3,26,64,.6)}',
+ (TAGLINE?H+'.hero h1:after{content:'+q(TAGLINE)+';display:block;margin-top:.85em;color:rgba(231,235,210,.8);font-family:var(--f-ui);font-size:11px;letter-spacing:.4em;text-transform:uppercase;text-shadow:none;line-height:1.6}':''),
+ H+'.hero:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 42% at 50% -8%,rgba(255,255,255,.22),rgba(255,255,255,0) 70%),radial-gradient(ellipse 3% 95% at 16% 0,rgba(255,255,255,.1),rgba(255,255,255,0) 100%),radial-gradient(ellipse 4.5% 110% at 39% 0,rgba(255,255,255,.08),rgba(255,255,255,0) 100%),radial-gradient(ellipse 2.2% 95% at 62% 0,rgba(255,255,255,.1),rgba(255,255,255,0) 100%),radial-gradient(ellipse 5% 120% at 82% 0,rgba(255,255,255,.07),rgba(255,255,255,0) 100%)}',
+ /* chân trang */
+ H+'footer{position:relative;padding-top:4.2em;border-top-color:rgba(157,209,255,.18);color:var(--muted)}',
+ (DEPTH?H+'footer:before{content:'+q(DEPTH)+';position:absolute;left:0;right:0;top:1.3em;text-align:center;color:rgba(127,227,212,.85);font-size:11px;letter-spacing:.4em;text-transform:uppercase}':''),
+ H+'footer:after{content:"";position:absolute;top:.8em;left:50%;width:3px;height:3px;border-radius:50%;background:rgba(127,227,212,.9);box-shadow:-150px 30px 2px rgba(127,227,212,.6),-100px -4px 1px rgba(157,209,255,.5),-60px 40px 2px rgba(127,227,212,.35),-20px 12px 1px rgba(157,209,255,.6),40px 36px 2px rgba(127,227,212,.45),90px 2px 1px rgba(157,209,255,.55),140px 40px 2px rgba(127,227,212,.5)}',
+ H+'footer a,'+H+'footer button{color:'+C.link+'}',
+ /* nút đổi giao diện */
+ '.vct-btn{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(14px,env(safe-area-inset-bottom,0px));z-index:99980;width:42px;height:42px;border-radius:50%;border:1px solid rgba(157,209,255,.45);background:#071a33;color:#f3f7dc;font-size:19px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,0,0,.35);padding:0}',
+ '.vct-btn:hover{border-color:#f3f7dc}',
+ 'html:not([data-vctheme="deep"]) .vct-btn{background:#fff;color:#1b2924;border-color:#d9e3dd}'
+].join('\n');
+var st=document.createElement('style');st.id='vct-style';st.textContent=css;document.head.appendChild(st);
+
+/* ===== BẬT / TẮT ===== */
+function isDeep(){var v=lsGet('vct_theme');return v?v==='deep':DEFAULT_ON}
+var btn=document.createElement('button');btn.type='button';btn.className='vct-btn';
+function apply(){
+  var on=isDeep();
+  document.documentElement.setAttribute('data-vctheme',on?'deep':'light');
+  btn.textContent=on?'☀':'🌊';
+  btn.title=on?'Chuyển sang giao diện sáng mặc định':'Chuyển sang giao diện Biển sâu';
+  btn.setAttribute('aria-label',btn.title);
+  try{var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',on?C.deep:'#1D6B58')}catch(e){}
+}
+btn.addEventListener('click',function(){lsSet('vct_theme',isDeep()?'light':'deep');apply()});
+document.body.appendChild(btn);
+apply();
+window.vcTheme={get:function(){return isDeep()?'deep':'light'},set:function(v){lsSet('vct_theme',v==='deep'?'deep':'light');apply()}};
 })();
 </script>
 </body>
