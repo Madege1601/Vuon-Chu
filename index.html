@@ -2807,5 +2807,219 @@ document.addEventListener('keydown',function(e){
 window.vcToc={open:open,close:close};
 })();
 </script>
+  <script>
+    /* ===== ADD-ON: GIAO DIỆN (BIỂN SÂU + MÂY XANH) =====
+   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
+   Có 3 giao diện: "Biển sâu" (xanh biển, chữ kem), "Mây xanh" (xanh dương nhạt, chữ Garamond, khung viền sáng, hình trang trí) và "Mặc định".
+   Nút 🎨 ở góc trái dưới để người đọc chọn. Lựa chọn được nhớ trên từng máy.
+   Muốn đổi màu, chữ hay hình: sửa ở mục CẤU HÌNH ngay bên dưới.
+   Giao diện Mây xanh dùng các hình trang trí lấy từ Tumblr qua đường link (mục IMG). Nếu link hỏng, hình biến mất nhưng màu và chữ vẫn đúng. */
+(function(){
+'use strict';
+if(window.__vcTheme)return;window.__vcTheme=1;
+
+/* ===== CẤU HÌNH ===== */
+var DEFAULT_THEME='deep';   /* giao diện ai vào web lần đầu cũng thấy: 'deep' (Biển sâu), 'sky' (Mây xanh) hoặc 'light' (mặc định) */
+
+/* -- Biển sâu -- */
+var TAGLINE='một đàn truyện · sâu sáu mươi sải';        /* dòng chữ nhỏ dưới tên Vườn Chữ ở trang chủ. Để '' nếu không muốn */
+var DEPTH  ='— vùng vực thẳm · 4.000 m —';              /* dòng chữ ở chân trang. Để '' nếu không muốn */
+var C={                                                 /* bảng màu Biển sâu */
+  sky:'#1668bd',       /* màu mặt nước ở đầu trang */
+  deep:'#02060f',      /* màu đáy biển ở cuối trang */
+  card:'#071a33',      /* nền khung nổi (hộp thoại, menu) */
+  ink:'#e8eee9',       /* chữ thường */
+  title:'#f3f7dc',     /* chữ tiêu đề (màu kem) */
+  muted:'#d3e1eb',     /* chữ phụ */
+  link:'#b4dcff',      /* màu link và nút chính */
+  teal:'#7fe3d4'       /* điểm nhấn xanh ngọc */
+};
+
+/* -- Mây xanh -- */
+var SKY_TAGLINE='⋆.˚𝓲 𝓯𝓲𝓷𝓭 𝓬𝓱𝓪𝓸𝓼 𝓲𝓷 𝔂𝓸𝓾𝓻 𝓬𝓸𝓶𝓯𝓸𝓻𝓽 ⋆.˚';   /* dòng chữ dưới tên ở trang chủ. Để '' nếu không muốn */
+var SKY_GLYPHS=true;      /* true: mục đang chọn có ký hiệu trang trí 𓇼 … 𓆜⋆˚࿔ hai bên. Máy nào không hiện được ký hiệu thì đặt false */
+var SKY_IMAGES=true;      /* false: tắt hết hình trang trí, chỉ giữ màu và chữ */
+var P={bg:'#0b2344',main:'#223954',ink:'#DAECFF',input:'#152F51',deco:'#788AB2',pale:'#a7cfee'};
+var IMG={                 /* hình trang trí, thay link khác nếu muốn */
+  sideR :'images/ok.jpg',
+  sideL :'images/2.png',
+  edgeT :'images/4.png',
+  edgeB :'images/3.png',
+  foot1 :'images/5.png',
+  foot2 :'images/6.png',
+  foot3 :'images/7.jpg',
+  banner:'images/8.jpg',
+  icon  :'images/9.png',
+  field :'images/9.jpg'
+};
+
+/* ===== TIỆN ÍCH ===== */
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function q(s){return '"'+String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"'}
+function u(k){return 'url("'+IMG[k]+'")'}
+
+/* ===== CSS: BIỂN SÂU ===== */
+var H='html[data-vctheme="deep"] ';
+function deepCss(){return [
+ H+'{color-scheme:dark;--bg:'+C.deep+';--surface:'+C.card+';--ink:'+C.ink+';--muted:'+C.muted+';--line:rgba(157,209,255,.22);--accent:'+C.link+';--accent-ink:#06284f;--soft:#0e3466;--warn:#ffb3a7;--topbar:rgba(3,16,38,.82);--shadow:0 22px 48px rgba(0,0,0,.55);--f-display:Didot,"Bodoni 72","Bodoni MT","Playfair Display","Noto Serif",Georgia,serif}',
+ H+'body{background:linear-gradient(180deg,'+C.sky+' 0,#115aa8 130px,#0c4889 330px,#093a70 700px,#072b55 1100px,#051e3e 1700px,'+C.deep+' 2700px) no-repeat,'+C.deep+';background-size:100% 2700px;color:var(--ink)}',
+ H+'h1,'+H+'h2,'+H+'h3{color:'+C.title+';font-weight:400;letter-spacing:.01em}',
+ H+'a{color:'+C.link+'}',
+ H+'.topbar{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}',
+ H+'.brand{color:'+C.title+'}',
+ H+'.iconbtn{background:rgba(3,20,46,.5)}',
+ H+'.iconbtn:hover{border-color:'+C.title+'}',
+ H+'.btn,'+H+'.tabs button,'+H+'.chnav .btn{border-radius:999px;letter-spacing:.04em}',
+ H+'.btn{background:'+C.link+';border-color:'+C.link+';color:#06284f}',
+ H+'.btn:hover{background:'+C.title+';border-color:'+C.title+';box-shadow:0 0 22px rgba(243,247,220,.35)}',
+ H+'.btn.ghost{background:rgba(3,20,46,.42);color:'+C.title+';border-color:rgba(231,235,210,.42);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}',
+ H+'.btn.ghost:hover{background:'+C.title+';color:#06284f}',
+ H+'.btn.danger{color:var(--warn);border-color:var(--warn);background:transparent}',
+ H+'.tabs button{background:rgba(3,20,46,.5)}',
+ H+'.tabs button[aria-pressed="true"]{background:'+C.link+';color:#06284f}',
+ H+'.card,'+H+'.panel,'+H+'.hero,'+H+'.mrow,'+H+'.rank li,'+H+'.chapters button,'+H+'details.faq{background:linear-gradient(180deg,rgba(14,52,102,.88),rgba(3,16,38,.92));border-color:rgba(157,209,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}',
+ H+'.card{border-radius:20px}',
+ H+'.card:hover,'+H+'.chapters button:hover{border-color:rgba(157,209,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 0 34px rgba(24,116,210,.3)}',
+ H+'.card .meta b{color:'+C.title+'}',
+ H+'.chip{background:rgba(3,20,46,.6);color:'+C.teal+';border-color:rgba(127,227,212,.35)}',
+ H+'.rail button:hover,'+H+'.rail button[aria-current="page"]{background:rgba(24,116,210,.35);color:#fff}',
+ H+'.rail .grp{color:'+C.teal+'}',
+ H+'.sec-title button{color:'+C.link+'}',
+ H+'input[type=text],'+H+'input[type=password],'+H+'input[type=search],'+H+'input[type=number],'+H+'select,'+H+'textarea{background:rgba(2,12,30,.6);border-color:rgba(157,209,255,.3);color:'+C.title+';border-radius:14px;box-shadow:inset 0 2px 10px rgba(0,0,0,.35)}',
+ H+'input:focus,'+H+'textarea:focus,'+H+'select:focus{border-color:'+C.link+';outline:none;box-shadow:inset 0 2px 10px rgba(0,0,0,.35),0 0 0 4px rgba(24,116,210,.3)}',
+ H+'.sheet,'+H+'.pop{background:'+C.card+';border-radius:20px}',
+ H+'.modal{background:rgba(1,6,16,.7)}',
+ H+'.msg .b{background:rgba(14,52,102,.75)}',
+ H+'.toast{background:'+C.title+';color:#06284f}',
+ H+'.drop:hover,'+H+'.drop.over{background:rgba(24,116,210,.25)}',
+ H+'.reader{border-color:rgba(157,209,255,.2)}',
+ H+'.reader h1,'+H+'.reader h2,'+H+'.reader h3,'+H+'.reader a{color:inherit}',
+ H+'.badge{color:#2a0d05}',
+ H+'.hero{text-align:center;justify-items:center;padding:38px 24px}',
+ H+'.hero p{margin-inline:auto}',
+ H+'.hero .row{justify-content:center}',
+ H+'.hero .glyph{color:rgba(157,209,255,.07)}',
+ H+'.hero h1{text-transform:uppercase;letter-spacing:.14em;font-size:clamp(26px,6vw,42px);color:'+C.title+';text-shadow:0 2px 22px rgba(3,26,64,.6)}',
+ (TAGLINE?H+'.hero h1:after{content:'+q(TAGLINE)+';display:block;margin-top:.85em;color:rgba(231,235,210,.8);font-family:var(--f-ui);font-size:11px;letter-spacing:.4em;text-transform:uppercase;text-shadow:none;line-height:1.6}':''),
+ H+'.hero:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 42% at 50% -8%,rgba(255,255,255,.22),rgba(255,255,255,0) 70%),radial-gradient(ellipse 3% 95% at 16% 0,rgba(255,255,255,.1),rgba(255,255,255,0) 100%),radial-gradient(ellipse 4.5% 110% at 39% 0,rgba(255,255,255,.08),rgba(255,255,255,0) 100%),radial-gradient(ellipse 2.2% 95% at 62% 0,rgba(255,255,255,.1),rgba(255,255,255,0) 100%),radial-gradient(ellipse 5% 120% at 82% 0,rgba(255,255,255,.07),rgba(255,255,255,0) 100%)}',
+ H+'footer{position:relative;padding-top:4.2em;border-top-color:rgba(157,209,255,.18);color:var(--muted)}',
+ (DEPTH?H+'footer:before{content:'+q(DEPTH)+';position:absolute;left:0;right:0;top:1.3em;text-align:center;color:rgba(127,227,212,.85);font-size:11px;letter-spacing:.4em;text-transform:uppercase}':''),
+ H+'footer:after{content:"";position:absolute;top:.8em;left:50%;width:3px;height:3px;border-radius:50%;background:rgba(127,227,212,.9);box-shadow:-150px 30px 2px rgba(127,227,212,.6),-100px -4px 1px rgba(157,209,255,.5),-60px 40px 2px rgba(127,227,212,.35),-20px 12px 1px rgba(157,209,255,.6),40px 36px 2px rgba(127,227,212,.45),90px 2px 1px rgba(157,209,255,.55),140px 40px 2px rgba(127,227,212,.5)}',
+ H+'footer a,'+H+'footer button{color:'+C.link+'}'
+].join('\n')}
+
+/* ===== CSS: MÂY XANH (chuyển từ skin AO3 sang cấu trúc của Vườn Chữ) ===== */
+var S='html[data-vctheme="sky"] ';
+function skyCss(){
+  var im=SKY_IMAGES;
+  var GARA='Garamond,Baskerville,Georgia,"Times New Roman",serif';
+  var FLAT=S+'.btn,'+S+'.btn.ghost,'+S+'.tabs button,'+S+'.rail button,'+S+'.sec-title button,'+S+'.iconbtn,'+S+'.pop button.item,'+S+'.chnav .btn,'+S+'.reader-bar .btn,'+S+'.page-head .btn,'+S+'footer button,'+S+'.stepper button,'+S+'.vcm-ctl button,'+S+'.vck-btn,'+S+'.vck-buy,'+S+'.vtoc-btn';
+  var CUR=S+'.rail button[aria-current="page"],'+S+'.tabs button[aria-pressed="true"]';
+  var r=[
+  /* bảng màu: các add-on khác cũng dùng các biến này nên tự đổi màu theo */
+  S+'{color-scheme:dark;--bg:'+P.bg+';--surface:'+P.main+';--ink:'+P.ink+';--muted:#b7cde4;--line:rgba(218,236,255,.5);--accent:'+P.ink+';--accent-ink:'+P.main+';--soft:'+P.input+';--warn:#ffb3a7;--topbar:rgba(34,57,84,.9);--shadow:2px 2px rgba(218,236,255,.5);--rbg:'+P.input+';--rfg:'+P.ink+'}',
+  'html[data-vctheme="sky"]{background:'+P.bg+'}',
+  S+'body{min-height:100vh;background-color:'+P.main+';color:'+P.ink+'}',
+  (im?'@media (min-width:900px){'+S+'body{background-image:'+u('sideR')+','+u('sideL')+';background-size:10%,3%;background-position:right,left;background-repeat:repeat-y,repeat-y}}':''),
+  S+'main a,'+S+'.reader a{color:'+P.ink+'}',
+  S+'main a:hover{background:rgba(82,117,146,.5)}',
+  S+'.topbar{background:rgba(34,57,84,.9);border-bottom:1px solid rgba(218,236,255,.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}',
+  S+'.brand{color:'+P.ink+'}',
+  S+'.brand i{background:'+P.ink+';color:'+P.main+'}',
+  S+'.badge{color:#2a0d05}',
+  /* nút phẳng, chữ nhỏ viết hoa kiểu Garamond */
+  FLAT+'{background:transparent;border:none;box-shadow:none;border-radius:0;padding:0 0 2px 0;margin:0 .15em;font-family:'+GARA+';font-size:.98em;letter-spacing:.08em;font-variant:small-caps;text-transform:none;color:'+P.ink+';text-decoration:none}',
+  S+'.btn{text-decoration:underline dotted;text-underline-offset:5px;text-decoration-color:rgba(218,236,255,.55)}',
+  S+'.btn.ghost{text-decoration:none}',
+  S+'.btn.danger{color:var(--warn)}',
+  S+'.iconbtn{padding:0 8px;min-width:36px;margin:0}',
+  S+'.chnav .btn[disabled]{opacity:.35}',
+  FLAT.split(',').map(function(x){return x+':hover'}).join(',')+'{background:'+P.input+';color:'+P.ink+'}',
+  CUR+'{background:'+P.ink+';color:'+P.main+'}',
+  (SKY_GLYPHS?CUR+'{display:flex;align-items:center}'+CUR.split(',').map(function(x){return x+':before'}).join(',')+'{content:"𓇼 ";margin-left:.2em;font-size:1.1em;color:'+P.deco+'}'+CUR.split(',').map(function(x){return x+':after'}).join(',')+'{content:" 𓆜⋆˚࿔";margin-left:.2em;font-size:1.1em;color:'+P.deco+'}':''),
+  S+'.rail .grp{color:#93A0C6;font-family:'+GARA+';font-variant:small-caps;letter-spacing:.12em;text-transform:none;font-size:13px}',
+  S+'.sec-title button{text-decoration:underline;text-underline-offset:4px}',
+  /* thẻ truyện giống khung "blurb" của skin */
+  S+'.card{background:'+P.main+';border:4px solid '+P.ink+';border-radius:20px;box-shadow:none}',
+  S+'.card:hover{background:'+P.input+';box-shadow:none;border-color:'+P.ink+'}',
+  S+'.card .meta b{color:'+P.ink+'}',
+  S+'.rank li,'+S+'.chapters button,'+S+'.mrow,'+S+'details.faq{background:'+P.main+';border:1px solid '+P.ink+';border-radius:10px;box-shadow:none;color:'+P.ink+'}',
+  S+'.chapters button:hover{background:'+P.input+'}',
+  S+'.rank .bar{background:'+P.input+'}',S+'.rank .bar i{background:'+P.ink+'}',
+  /* thẻ nhãn (tag) tô màu như skin */
+  S+'.chip{display:inline-block;background:#BAD0E7;color:#4C587D;border:1px solid #BAD0E7;border-radius:5px;padding:2px 7px}',
+  /* khung chứa (như fieldset) có hình nền và viền sáng */
+  S+'.panel,'+S+'.sheet{'+(im?'background:linear-gradient(rgba(34,57,84,.72),rgba(34,57,84,.72)),'+u('field')+' center/cover no-repeat,'+P.main+';':'background:'+P.main+';')+'border:1px solid '+P.ink+';border-radius:8px;box-shadow:inset 0 0 10px rgba(218,236,255,.7);color:'+P.ink+'}',
+  S+'.sheet{padding:22px}',
+  S+'.modal{background:rgba(11,35,68,.78)}',
+  S+'input[type=text],'+S+'input[type=password],'+S+'input[type=search],'+S+'input[type=number],'+S+'select,'+S+'textarea{background:'+P.input+';color:'+P.ink+';border:1px solid '+P.ink+';border-radius:10px;box-shadow:none}',
+  S+'input:focus,'+S+'textarea:focus,'+S+'select:focus{background:'+P.main+';outline:none;box-shadow:0 0 4px '+P.ink+'}',
+  S+'.field label,'+S+'.note,'+S+'.sec-title+p{color:#f5f5f5}',
+  /* menu thả xuống */
+  S+'.pop{background:'+P.bg+';border:1px solid '+P.ink+';border-radius:10px;box-shadow:2px 2px rgba(218,236,255,.5)}',
+  S+'.pop button.item{width:100%;text-align:left;margin:0;padding:8px 12px 8px}',
+  S+'.toast{background:'+P.bg+';color:'+P.ink+';border:1px solid '+P.ink+'}',
+  S+'.msg .b{background:'+P.input+';border:1px solid rgba(218,236,255,.4)}',
+  S+'.drop{border-color:'+P.ink+'}',S+'.drop:hover,'+S+'.drop.over{background:'+P.input+'}',
+  /* trang chủ: khung có hai viền hoa văn trên dưới, ảnh nền, biểu tượng nhỏ cạnh tên */
+  S+'.hero{text-align:center;justify-items:center;border:2px solid transparent;border-radius:25px;box-shadow:none;padding:'+(im?'46px':'34px')+' 30px;'+
+    'background:'+(im?'linear-gradient(rgba(34,57,84,.5),rgba(34,57,84,.5)),'+u('edgeT')+' top/335px auto repeat-x,'+u('edgeB')+' bottom/335px auto repeat-x,'+u('banner')+' center/cover no-repeat,'+P.main:P.main)+'}',
+  S+'.hero p{margin-inline:auto;color:'+P.ink+'}',
+  S+'.hero .row{justify-content:center}',
+  S+'.hero .glyph{color:rgba(218,236,255,.07)}',
+  S+'.hero h1{color:'+P.ink+';font-weight:400}',
+  (im?S+'.hero h1:before{content:" ";display:inline-block;width:50px;height:50px;vertical-align:middle;margin-right:10px;background:'+u('icon')+' center/cover no-repeat}':''),
+  (SKY_TAGLINE?S+'.hero h1:after{content:'+q(SKY_TAGLINE)+';display:block;margin-top:.35em;color:'+P.ink+';font-size:.45em;font-weight:400;line-height:1.4}':''),
+  /* trang đọc */
+  S+'.reader{text-align:justify;border:1px solid '+P.ink+'}',
+  S+'.reader h2{font-size:clamp(1.4em,6vw,2.7em);text-align:center;line-height:1.15}',
+  S+'.chnav .note{color:'+P.ink+'}',
+  /* chân trang: dải hoa văn, nền xanh nhạt, chữ xanh đậm */
+  S+'footer{border-top:none;padding:130px 18px 18px;color:'+P.main+';font-variant:small-caps;'+
+    'background-color:transparent;background-image:'+(im?u('foot1')+','+u('foot2')+','+u('foot3')+',':'')+'linear-gradient(to bottom,transparent 100px,'+P.pale+' 100px,'+P.pale+' 100%);'+
+    'background-position:'+(im?'top center,bottom right,left bottom,':'')+'top center;background-size:'+(im?'auto 50px,20%,10%,':'')+'100% 100%;background-repeat:'+(im?'repeat-x,no-repeat,no-repeat,':'')+'no-repeat}',
+  S+'footer span,'+S+'footer a,'+S+'footer button{color:'+P.main+'!important;background:transparent!important;text-decoration:none}',
+  S+'footer a:hover,'+S+'footer button:hover{text-decoration:underline}'
+  ];
+  return r.join('\n');
+}
+
+/* ===== CSS CHUNG: nút chọn giao diện ===== */
+function baseCss(){return [
+ '.vct-btn{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(14px,env(safe-area-inset-bottom,0px));z-index:99980;width:42px;height:42px;border-radius:50%;border:1px solid var(--line,#d9e3dd);background:var(--surface,#fff);color:var(--ink,#1b2924);font-size:19px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,0,0,.35);padding:0}',
+ '.vct-menu{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 52px);z-index:99981;min-width:190px;background:var(--surface,#fff);color:var(--ink,#1b2924);border:1px solid var(--line,#d9e3dd);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.4);padding:6px;font:14px/1.4 var(--f-ui,system-ui,sans-serif)}',
+ '.vct-menu[hidden]{display:none}',
+ '.vct-menu button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:none;color:inherit;font:inherit;padding:9px 10px;border-radius:9px;cursor:pointer}',
+ '.vct-menu button:hover,.vct-menu button:focus-visible{background:var(--soft,#e5efea)}',
+ '.vct-menu button[aria-checked="true"]{font-weight:700}',
+ '.vct-menu .ck{margin-left:auto;opacity:0}.vct-menu button[aria-checked="true"] .ck{opacity:1}'
+].join('\n')}
+
+var st=document.createElement('style');st.id='vct-style';st.textContent=[deepCss(),skyCss(),baseCss()].join('\n');document.head.appendChild(st);
+
+/* ===== CHỌN GIAO DIỆN ===== */
+var THEMES=[['deep','🌊','Biển sâu','#02060f'],['sky','☁','Mây xanh',P.main],['light','☀','Mặc định','#1D6B58']];
+function valid(v){return v==='deep'||v==='sky'||v==='light'}
+function cur(){var v=lsGet('vct_theme');return valid(v)?v:(valid(DEFAULT_THEME)?DEFAULT_THEME:'deep')}
+var btn=document.createElement('button');btn.type='button';btn.className='vct-btn';btn.textContent='🎨';btn.title='Đổi giao diện';btn.setAttribute('aria-label','Đổi giao diện');btn.setAttribute('aria-haspopup','true');
+var menu=document.createElement('div');menu.className='vct-menu';menu.hidden=true;menu.setAttribute('role','menu');
+menu.innerHTML=THEMES.map(function(t){return '<button type="button" role="menuitemradio" data-t="'+t[0]+'"><span aria-hidden="true">'+t[1]+'</span><span>'+t[2]+'</span><span class="ck" aria-hidden="true">✓</span></button>'}).join('');
+function apply(){
+  var t=cur();
+  document.documentElement.setAttribute('data-vctheme',t);
+  Array.prototype.forEach.call(menu.querySelectorAll('button'),function(b){b.setAttribute('aria-checked',b.getAttribute('data-t')===t?'true':'false')});
+  try{var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',THEMES.filter(function(x){return x[0]===t})[0][3])}catch(e){}
+}
+function set(v){lsSet('vct_theme',valid(v)?v:'light');apply()}
+btn.addEventListener('click',function(e){e.stopPropagation();menu.hidden=!menu.hidden;if(!menu.hidden){var c=menu.querySelector('[aria-checked="true"]');if(c)c.focus()}});
+menu.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-t]');if(!b)return;set(b.getAttribute('data-t'));menu.hidden=true;btn.focus()});
+document.addEventListener('click',function(e){if(!menu.hidden&&!menu.contains(e.target)&&e.target!==btn)menu.hidden=true});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!menu.hidden){menu.hidden=true;btn.focus()}});
+document.body.appendChild(btn);document.body.appendChild(menu);
+apply();
+window.vcTheme={get:cur,set:set};
+})();
+</script>    
 </body>
 </html>
