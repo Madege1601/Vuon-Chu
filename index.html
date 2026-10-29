@@ -351,13 +351,14 @@ footer a,footer button{color:var(--accent);background:none;border:0;padding:0;te
 
 <script>
 (function(){
-  var HASH_KEY = "8d306fb7517dfa61c329c78f1e3ec76ae7b17434acad0ec3986829fd41eae145"; // Mã SHA-256 chuẩn của: vuonchu2026
+  var HASH_KEY = "8d306fb7517dfa61c329c78f1e3ec76ae7b17434acad0ec3986829fd41eae145";
   var gate = document.getElementById('gatekeeper');
   var keyInp = document.getElementById('gateKey');
   var btn = document.getElementById('gateBtn');
   var err = document.getElementById('gateErr');
 
-  if(localStorage.getItem('vc_unlocked') === 'true') {
+  var unlocked=false;try{unlocked=localStorage.getItem('vc_unlocked')==='true'}catch(e){}
+  if(unlocked) {
     if(gate) gate.style.display = 'none'; 
   } else {
     document.body.style.overflow = 'hidden';
@@ -373,10 +374,11 @@ footer a,footer button{color:var(--accent);background:none;border:0;padding:0;te
     var cleanInput = keyInp.value.trim().toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
 
+    if(!(window.crypto&&crypto.subtle)){err.textContent='Cần mở trang bằng địa chỉ https để nhập mã.';return}
     var userHash = await sha256(cleanInput);
 
     if(userHash === HASH_KEY) {
-      localStorage.setItem('vc_unlocked', 'true');
+      try{localStorage.setItem('vc_unlocked', 'true')}catch(e){}
       if(gate) gate.style.display = 'none';
       document.body.style.overflow = '';
     } else {
@@ -739,14 +741,11 @@ function cover(s){return '<div class="cover" style="background:linear-gradient(1
 function card(s){
   var tagsHtml = (s.tags && s.tags.length) ? s.tags.map(function(t){ return '<span class="pop-chip">'+esc(t)+'</span>'; }).join('') : '';
   var introTxt = s.intro ? esc(s.intro) : 'Chưa có phần giới thiệu cho tác phẩm này.';
-  var viewsCount = Math.floor((s.title.length * 187 + (s.ch.length * 42)) % 890 + 50);
-  var likesCount = Math.floor(viewsCount * 0.12 + 5);
 
   var popHtml = '<div class="card-pop">'+
     '<div class="pop-title">'+esc(s.title)+'</div>'+
     '<div class="pop-row"><span class="label">📷 Tác giả</span> <b>'+esc(s.author||'Chưa rõ')+'</b></div>'+
-    '<div class="pop-row"><span class="label">✦ Ngôn sứ</span> <b>'+esc(s.author||'Chưa rõ')+'</b></div>'+
-    '<div class="pop-stats"><span>📖 '+s.ch.length+'</span><span>👁 '+viewsCount+'</span><span>♡ '+likesCount+'</span></div>'+
+    '<div class="pop-stats"><span>📖 '+s.ch.length+' chương</span><span>'+(s.sec==='dai'?'Truyện dài':'Truyện ngắn')+'</span></div>'+
     '<div class="pop-intro">'+introTxt+'</div>'+
     (tagsHtml ? '<div class="pop-tags">'+tagsHtml+'</div>' : '')+
   '</div>';
@@ -1912,79 +1911,6 @@ function checkNew(){
 if(document.readyState==='complete')setTimeout(checkNew,1500);else window.addEventListener('load',function(){setTimeout(checkNew,1500)});
 })();
 </script>    
- <script>
-(function() {
-  'use strict';
-
-  // Tên khóa lưu trong bộ nhớ trình duyệt & mật khẩu chuẩn
-  const AUTH_KEY = 'vuonchu_is_authenticated';
-  const PASSCODE = 'vuonchu2026';
-
-  // Hàm chuẩn hóa chuỗi (tự động xóa dấu tiếng Việt và viết thường)
-  function cleanText(str) {
-    return (str || '')
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/đ/g, "d")
-      .trim();
-  }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    // Tìm các phần tử giao diện Bức tường bảo vệ (Gatekeeper)
-    const gateOverlay = document.getElementById('gatekeeper') || document.querySelector('.gate-overlay') || document.querySelector('.security-gate');
-    const passInput = document.getElementById('gateInput') || document.querySelector('.gate-input');
-    const passBtn = document.getElementById('gateSubmit') || document.querySelector('.gate-btn');
-    const logoutBtn = document.getElementById('logoutBtn');
-
-    // 1. TỰ ĐỘNG MỞ KHÓA: Nếu đã từng đăng nhập thành công trước đó
-    if (localStorage.getItem(AUTH_KEY) === 'true') {
-      if (gateOverlay) {
-        gateOverlay.style.display = 'none';
-      }
-    }
-
-    // 2. XỬ LÝ KHI NGƯỜI DÙNG NHẬP MẬT KHẨU
-    function unlockApp() {
-      if (!passInput) return;
-      
-      const userInput = cleanText(passInput.value);
-      if (userInput === PASSCODE) {
-        // Lưu trạng thái đăng nhập vĩnh viễn vào máy
-        localStorage.setItem(AUTH_KEY, 'true');
-        
-        // Ẩn bức tường bảo vệ
-        if (gateOverlay) {
-          gateOverlay.style.opacity = '0';
-          setTimeout(function() {
-            gateOverlay.style.display = 'none';
-          }, 300);
-        }
-      } else {
-        alert('Mật khẩu chưa chính xác, vui lòng thử lại!');
-        passInput.value = '';
-        passInput.focus();
-      }
-    }
-
-    // Sự kiện bấm nút mở khóa hoặc nhấn Enter
-    if (passBtn) passBtn.addEventListener('click', unlockApp);
-    if (passInput) {
-      passInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') unlockApp();
-      });
-    }
-
-    // 3. XỬ LÝ ĐĂNG XUẤT / KHÓA LẠI TRANG WEB
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', function() {
-        localStorage.removeItem(AUTH_KEY); // Xóa dữ liệu đăng nhập
-        location.reload(); // Tải lại trang để hiện lại tường khóa
-      });
-    }
-  });
-})();
-</script>
   <script>
     /* ===== ADD-ON: PHÂN QUYỀN (QUẢN TRỊ / THÀNH VIÊN / KHÁCH) =====
    Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
@@ -2538,112 +2464,6 @@ window.vcKeys={
   open:function(){togglePanel(true)},
   roll:roll
 };
-})();
-</script>
-  <script>
-    /* ===== ADD-ON: GIAO DIỆN "BIỂN SÂU" =====
-   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
-   - Nền xanh biển chuyển dần xuống gần đen, chữ màu kem, thẻ truyện như kính mờ, nút bo tròn, tiêu đề kiểu Didot.
-   - Nút tròn 🌊 / ☀ ở góc trái dưới để người đọc đổi giữa "Biển sâu" và giao diện mặc định. Lựa chọn được nhớ trên từng máy.
-   - Muốn đổi màu hay chữ: sửa ở mục CẤU HÌNH ngay bên dưới. */
-(function(){
-'use strict';
-if(window.__vcTheme)return;window.__vcTheme=1;
-
-/* ===== CẤU HÌNH ===== */
-var TAGLINE='một đàn truyện · sâu sáu mươi sải';        /* dòng chữ nhỏ dưới tên Vườn Chữ ở trang chủ. Để '' nếu không muốn */
-var DEPTH  ='— vùng vực thẳm · 4.000 m —';              /* dòng chữ ở chân trang. Để '' nếu không muốn */
-var DEFAULT_ON=true;                                    /* true: ai vào web lần đầu cũng thấy Biển sâu. false: mặc định giao diện cũ */
-var C={                                                 /* bảng màu. Đổi mã màu ở đây */
-  sky:'#1668bd',       /* màu mặt nước ở đầu trang */
-  deep:'#02060f',      /* màu đáy biển ở cuối trang */
-  card:'#071a33',      /* nền khung nổi (hộp thoại, menu) */
-  ink:'#e8eee9',       /* chữ thường */
-  title:'#f3f7dc',     /* chữ tiêu đề (màu kem) */
-  muted:'#d3e1eb',     /* chữ phụ */
-  link:'#b4dcff',      /* màu link và nút chính */
-  teal:'#7fe3d4'       /* điểm nhấn xanh ngọc */
-};
-
-/* ===== TIỆN ÍCH ===== */
-function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
-function q(s){return '"'+String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"'}
-var H='html[data-vctheme="deep"] ';
-
-/* ===== CSS ===== */
-var css=[
- H+'{color-scheme:dark;--bg:'+C.deep+';--surface:'+C.card+';--ink:'+C.ink+';--muted:'+C.muted+';--line:rgba(157,209,255,.22);--accent:'+C.link+';--accent-ink:#06284f;--soft:#0e3466;--warn:#ffb3a7;--topbar:rgba(3,16,38,.82);--shadow:0 22px 48px rgba(0,0,0,.55);--f-display:Didot,"Bodoni 72","Bodoni MT","Playfair Display","Noto Serif",Georgia,serif}',
- H+'body{background:linear-gradient(180deg,'+C.sky+' 0,#115aa8 130px,#0c4889 330px,#093a70 700px,#072b55 1100px,#051e3e 1700px,'+C.deep+' 2700px) no-repeat,'+C.deep+';background-size:100% 2700px;color:var(--ink)}',
- H+'h1,'+H+'h2,'+H+'h3{color:'+C.title+';font-weight:400;letter-spacing:.01em}',
- H+'a{color:'+C.link+'}',
- H+'.topbar{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}',
- H+'.brand{color:'+C.title+'}',
- H+'.iconbtn{background:rgba(3,20,46,.5)}',
- H+'.iconbtn:hover{border-color:'+C.title+'}',
- /* nút bo tròn */
- H+'.btn,'+H+'.tabs button,'+H+'.chnav .btn{border-radius:999px;letter-spacing:.04em}',
- H+'.btn{background:'+C.link+';border-color:'+C.link+';color:#06284f}',
- H+'.btn:hover{background:'+C.title+';border-color:'+C.title+';box-shadow:0 0 22px rgba(243,247,220,.35)}',
- H+'.btn.ghost{background:rgba(3,20,46,.42);color:'+C.title+';border-color:rgba(231,235,210,.42);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}',
- H+'.btn.ghost:hover{background:'+C.title+';color:#06284f}',
- H+'.btn.danger{color:var(--warn);border-color:var(--warn);background:transparent}',
- H+'.tabs button{background:rgba(3,20,46,.5)}',
- H+'.tabs button[aria-pressed="true"]{background:'+C.link+';color:#06284f}',
- /* khung kính mờ */
- H+'.card,'+H+'.panel,'+H+'.hero,'+H+'.mrow,'+H+'.rank li,'+H+'.chapters button,'+H+'details.faq{background:linear-gradient(180deg,rgba(14,52,102,.88),rgba(3,16,38,.92));border-color:rgba(157,209,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}',
- H+'.card{border-radius:20px}',
- H+'.card:hover,'+H+'.chapters button:hover{border-color:rgba(157,209,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 0 34px rgba(24,116,210,.3)}',
- H+'.card .meta b{color:'+C.title+'}',
- H+'.chip{background:rgba(3,20,46,.6);color:'+C.teal+';border-color:rgba(127,227,212,.35)}',
- H+'.rail button:hover,'+H+'.rail button[aria-current="page"]{background:rgba(24,116,210,.35);color:#fff}',
- H+'.rail .grp{color:'+C.teal+'}',
- H+'.sec-title button{color:'+C.link+'}',
- H+'input[type=text],'+H+'input[type=password],'+H+'input[type=search],'+H+'input[type=number],'+H+'select,'+H+'textarea{background:rgba(2,12,30,.6);border-color:rgba(157,209,255,.3);color:'+C.title+';border-radius:14px;box-shadow:inset 0 2px 10px rgba(0,0,0,.35)}',
- H+'input:focus,'+H+'textarea:focus,'+H+'select:focus{border-color:'+C.link+';outline:none;box-shadow:inset 0 2px 10px rgba(0,0,0,.35),0 0 0 4px rgba(24,116,210,.3)}',
- H+'.sheet,'+H+'.pop{background:'+C.card+';border-radius:20px}',
- H+'.modal{background:rgba(1,6,16,.7)}',
- H+'.msg .b{background:rgba(14,52,102,.75)}',
- H+'.toast{background:'+C.title+';color:#06284f}',
- H+'.drop:hover,'+H+'.drop.over{background:rgba(24,116,210,.25)}',
- H+'.reader{border-color:rgba(157,209,255,.2)}',
- H+'.reader h1,'+H+'.reader h2,'+H+'.reader h3,'+H+'.reader a{color:inherit}',
- H+'.badge{color:#2a0d05}',
- /* trang chủ: tên, dòng chữ nhỏ, tia sáng từ mặt nước */
- H+'.hero{text-align:center;justify-items:center;padding:38px 24px}',
- H+'.hero p{margin-inline:auto}',
- H+'.hero .row{justify-content:center}',
- H+'.hero .glyph{color:rgba(157,209,255,.07)}',
- H+'.hero h1{text-transform:uppercase;letter-spacing:.14em;font-size:clamp(26px,6vw,42px);color:'+C.title+';text-shadow:0 2px 22px rgba(3,26,64,.6)}',
- (TAGLINE?H+'.hero h1:after{content:'+q(TAGLINE)+';display:block;margin-top:.85em;color:rgba(231,235,210,.8);font-family:var(--f-ui);font-size:11px;letter-spacing:.4em;text-transform:uppercase;text-shadow:none;line-height:1.6}':''),
- H+'.hero:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 42% at 50% -8%,rgba(255,255,255,.22),rgba(255,255,255,0) 70%),radial-gradient(ellipse 3% 95% at 16% 0,rgba(255,255,255,.1),rgba(255,255,255,0) 100%),radial-gradient(ellipse 4.5% 110% at 39% 0,rgba(255,255,255,.08),rgba(255,255,255,0) 100%),radial-gradient(ellipse 2.2% 95% at 62% 0,rgba(255,255,255,.1),rgba(255,255,255,0) 100%),radial-gradient(ellipse 5% 120% at 82% 0,rgba(255,255,255,.07),rgba(255,255,255,0) 100%)}',
- /* chân trang */
- H+'footer{position:relative;padding-top:4.2em;border-top-color:rgba(157,209,255,.18);color:var(--muted)}',
- (DEPTH?H+'footer:before{content:'+q(DEPTH)+';position:absolute;left:0;right:0;top:1.3em;text-align:center;color:rgba(127,227,212,.85);font-size:11px;letter-spacing:.4em;text-transform:uppercase}':''),
- H+'footer:after{content:"";position:absolute;top:.8em;left:50%;width:3px;height:3px;border-radius:50%;background:rgba(127,227,212,.9);box-shadow:-150px 30px 2px rgba(127,227,212,.6),-100px -4px 1px rgba(157,209,255,.5),-60px 40px 2px rgba(127,227,212,.35),-20px 12px 1px rgba(157,209,255,.6),40px 36px 2px rgba(127,227,212,.45),90px 2px 1px rgba(157,209,255,.55),140px 40px 2px rgba(127,227,212,.5)}',
- H+'footer a,'+H+'footer button{color:'+C.link+'}',
- /* nút đổi giao diện */
- '.vct-btn{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(14px,env(safe-area-inset-bottom,0px));z-index:99980;width:42px;height:42px;border-radius:50%;border:1px solid rgba(157,209,255,.45);background:#071a33;color:#f3f7dc;font-size:19px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,0,0,.35);padding:0}',
- '.vct-btn:hover{border-color:#f3f7dc}',
- 'html:not([data-vctheme="deep"]) .vct-btn{background:#fff;color:#1b2924;border-color:#d9e3dd}'
-].join('\n');
-var st=document.createElement('style');st.id='vct-style';st.textContent=css;document.head.appendChild(st);
-
-/* ===== BẬT / TẮT ===== */
-function isDeep(){var v=lsGet('vct_theme');return v?v==='deep':DEFAULT_ON}
-var btn=document.createElement('button');btn.type='button';btn.className='vct-btn';
-function apply(){
-  var on=isDeep();
-  document.documentElement.setAttribute('data-vctheme',on?'deep':'light');
-  btn.textContent=on?'☀':'🌊';
-  btn.title=on?'Chuyển sang giao diện sáng mặc định':'Chuyển sang giao diện Biển sâu';
-  btn.setAttribute('aria-label',btn.title);
-  try{var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',on?C.deep:'#1D6B58')}catch(e){}
-}
-btn.addEventListener('click',function(){lsSet('vct_theme',isDeep()?'light':'deep');apply()});
-document.body.appendChild(btn);
-apply();
-window.vcTheme={get:function(){return isDeep()?'deep':'light'},set:function(v){lsSet('vct_theme',v==='deep'?'deep':'light');apply()}};
 })();
 </script>
   <script>
