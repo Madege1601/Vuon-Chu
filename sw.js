@@ -1,35 +1,7 @@
-const CACHE_NAME = 'vuonchu-offline-v1';
-
-// Lưu sẵn giao diện và truyện vào bộ nhớ đệm
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        './',
-        './index.html',
-        './truyen.json'
-      ]);
-    })
-  );
-  self.skipWaiting();
-});
-
-// Khi mất mạng, lấy dữ liệu từ bộ nhớ đệm ra để hiển thị. 
-// Khi có mạng, tự động cập nhật dữ liệu mới ngầm bên trong.
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      const fetchPromise = fetch(e.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(e.request, networkResponse.clone());
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // Mất mạng thì không báo lỗi, cứ lấy cache
-      });
-      return cachedResponse || fetchPromise;
-    })
-  );
+var V='vc-v2';
+self.addEventListener('install',function(e){e.waitUntil(caches.open(V).then(function(c){return c.addAll(['./'])}).then(function(){return self.skipWaiting()}))});
+self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(k){return Promise.all(k.filter(function(x){return x!==V}).map(function(x){return caches.delete(x)}))}).then(function(){return self.clients.claim()}))});
+self.addEventListener('fetch',function(e){
+  if(e.request.method!=='GET')return;
+  e.respondWith(fetch(e.request).then(function(r){if(r&&r.ok){var c=r.clone();caches.open(V).then(function(ch){ch.put(e.request,c)})}return r}).catch(function(){return caches.match(e.request).then(function(m){return m||caches.match('./')})}));
 });
