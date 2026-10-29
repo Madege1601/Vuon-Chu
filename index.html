@@ -2646,5 +2646,166 @@ apply();
 window.vcTheme={get:function(){return isDeep()?'deep':'light'},set:function(v){lsSet('vct_theme',v==='deep'?'deep':'light');apply()}};
 })();
 </script>
+  <script>
+    /* ===== ADD-ON: MỤC LỤC TRONG TRANG ĐỌC =====
+   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
+   Khi đang đọc một chương, sẽ có nút "☰ Mục lục" trên thanh công cụ và ở dưới chương (bấm vào "1 / 20").
+   Bấm vào sẽ mở danh sách tất cả các chương của truyện, chương đang đọc được tô sáng, bấm chương nào là nhảy tới chương đó.
+   Truyện nhiều chương có thêm ô lọc để tìm nhanh theo tên hoặc số chương. */
+(function(){
+'use strict';
+if(window.__vcToc)return;window.__vcToc=1;
+
+var FILTER_FROM=12;   /* từ bấy nhiêu chương trở lên thì hiện ô lọc */
+
+/* ===== TIỆN ÍCH ===== */
+function $(s,r){return (r||document).querySelector(s)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function lsj(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
+function plain(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d')}
+
+/* ===== LẤY DANH SÁCH TRUYỆN (giống cách trang chính lấy) ===== */
+function idbGet(key){
+  return new Promise(function(res,rej){
+    if(!window.indexedDB)return rej(new Error('no idb'));
+    var r=indexedDB.open('vuonchu',1);
+    r.onupgradeneeded=function(){r.result.createObjectStore('kv')};   /* giống hệt trang chính, để không làm hỏng kho dữ liệu */
+    r.onerror=function(){rej(r.error)};
+    r.onsuccess=function(){
+      var db=r.result;
+      try{
+        var tx=db.transaction('kv','readonly'),q=tx.objectStore('kv').get(key);
+        tx.oncomplete=function(){db.close();res(q.result)};tx.onerror=tx.onabort=function(){db.close();rej(tx.error)};
+      }catch(e){db.close();rej(e)}
+    };
+  });
+}
+function fetchBase(){
+  return fetch('truyen.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():[]}).catch(function(){return []});
+}
+function getStories(){
+  return idbGet('stories').then(function(v){
+    if(Array.isArray(v))return v;
+    var l=lsj('kv_stories')||lsj('vc_stories');
+    return Array.isArray(l)?l:fetchBase();
+  },function(){
+    var l=lsj('kv_stories')||lsj('vc_stories');
+    return Array.isArray(l)?l:fetchBase();
+  });
+}
+
+/* ===== ĐỌC THÔNG TIN TỪ TRANG ĐỌC ĐANG MỞ ===== */
+function info(){
+  var wrap=$('#view .reader-wrap');if(!wrap)return null;
+  var sb=$('.reader-bar [data-story]',wrap),note=$('.chnav .note',wrap);
+  if(!sb)return null;
+  var m=note?String(note.textContent).match(/(\d+)\s*\/\s*(\d+)/):null;
+  return {id:sb.getAttribute('data-story'),cur:m?(+m[1]-1):0,total:m?+m[2]:0,title:(sb.textContent||'').replace(/^[←\s]+/,'').trim(),chTitle:($('.reader h2',wrap)||{}).textContent||''};
+}
+
+/* ===== CSS ===== */
+var css=document.createElement('style');
+css.textContent=
+'.vtoc-ov{position:fixed;inset:0;z-index:100001;background:rgba(8,16,12,.6);display:flex;align-items:flex-end;justify-content:center}'+
+'.vtoc-box{background:var(--surface,#fff);color:var(--ink,#1B2924);border:1px solid var(--line,#D9E3DD);border-radius:18px 18px 0 0;width:min(520px,100%);max-height:84vh;display:flex;flex-direction:column;box-shadow:0 -12px 40px rgba(0,0,0,.35);font:14px/1.45 var(--f-ui,system-ui,sans-serif)}'+
+'@media (min-width:640px){.vtoc-ov{align-items:center;padding:16px}.vtoc-box{border-radius:18px;max-height:80vh}}'+
+'.vtoc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:16px 18px 8px}.vtoc-h b{font-family:var(--f-display,Georgia,serif);font-size:19px;font-weight:600;line-height:1.3;display:block}.vtoc-h small{color:var(--muted,#5A6B65)}'+
+'.vtoc-x{border:0;background:none;color:inherit;font-size:24px;line-height:1;cursor:pointer;padding:0 4px}'+
+'.vtoc-q{padding:4px 18px 8px}.vtoc-q input{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line,#D9E3DD);background:var(--bg,#fff);color:inherit;font:inherit}'+
+'.vtoc-list{overflow:auto;padding:4px 10px 14px;display:grid;gap:3px;align-content:start;-webkit-overflow-scrolling:touch}'+
+'.vtoc-it{display:flex;align-items:center;gap:10px;text-align:left;border:0;background:none;color:inherit;font:inherit;padding:10px 10px;border-radius:10px;cursor:pointer;width:100%}'+
+'.vtoc-it:hover,.vtoc-it:focus-visible{background:var(--soft,#E5EFEA)}'+
+'.vtoc-it .n{flex:none;min-width:30px;text-align:center;font-size:12px;color:var(--muted,#5A6B65);border:1px solid var(--line,#D9E3DD);border-radius:99px;padding:1px 6px}'+
+'.vtoc-it .t{flex:1;min-width:0;overflow-wrap:anywhere}'+
+'.vtoc-it .k{flex:none;font-size:11.5px;color:var(--accent,#1D6B58);font-weight:600}'+
+'.vtoc-it.cur{background:var(--soft,#E5EFEA);box-shadow:0 0 0 1.5px var(--accent,#1D6B58) inset}.vtoc-it.cur .t{font-weight:700}'+
+'.vtoc-empty{padding:18px;color:var(--muted,#5A6B65);text-align:center}'+
+'.vtoc-it[hidden],.vtoc-empty[hidden]{display:none}'+
+'[data-vtoc-note]{cursor:pointer;text-decoration:underline;text-underline-offset:3px}';
+document.head.appendChild(css);
+
+/* ===== NÚT MỤC LỤC TRONG TRANG ĐỌC ===== */
+function inject(){
+  var wrap=$('#view .reader-wrap');if(!wrap)return;
+  var bar=$('.reader-bar',wrap);
+  if(bar&&!$('.vtoc-btn',bar)){
+    var b=document.createElement('button');b.type='button';b.className='btn ghost sm vtoc-btn';b.textContent='☰ Mục lục';b.setAttribute('data-vtoc','open');
+    var g=$('.grow',bar);if(g&&g.nextSibling)bar.insertBefore(b,g.nextSibling);else bar.appendChild(b);
+  }
+  var note=$('.chnav .note',wrap);
+  if(note&&!note.hasAttribute('data-vtoc-note')){
+    note.setAttribute('data-vtoc-note','1');note.setAttribute('role','button');note.setAttribute('tabindex','0');
+    note.setAttribute('title','Mở mục lục');note.setAttribute('data-vtoc','open');
+  }
+}
+var queued=false;
+function sched(){if(queued)return;queued=true;Promise.resolve().then(function(){queued=false;inject()})}
+var view=document.getElementById('view');
+if(view)new MutationObserver(sched).observe(view,{childList:true});
+inject();
+
+/* ===== HỘP MỤC LỤC ===== */
+var ov=null,prevOverflow='';
+function close(){
+  if(!ov)return;ov.remove();ov=null;
+  document.body.style.overflow=prevOverflow;
+}
+function open(){
+  var inf=info();if(!inf)return;
+  close();
+  prevOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
+  ov=document.createElement('div');ov.className='vtoc-ov';
+  ov.innerHTML='<div class="vtoc-box" role="dialog" aria-modal="true" aria-label="Mục lục"><div class="vtoc-h"><div><b>'+esc(inf.title||'Mục lục')+'</b><small id="vtocSub">Mục lục · đang tải…</small></div><button type="button" class="vtoc-x" data-vtoc="close" aria-label="Đóng">×</button></div><div id="vtocBody"></div></div>';
+  document.body.appendChild(ov);
+  getStories().then(function(list){
+    var s=null;(list||[]).forEach(function(x){if(String(x.id)===String(inf.id))s=x});
+    var chs=s&&Array.isArray(s.ch)?s.ch.map(function(c,i){return String((c&&c.t)||('Chương '+(i+1)))}):[];
+    if(!chs.length&&inf.total){for(var i=0;i<inf.total;i++)chs.push(i===inf.cur&&inf.chTitle?inf.chTitle:'Chương '+(i+1))}
+    render(chs,inf);
+  });
+}
+function render(chs,inf){
+  if(!ov)return;
+  var sub=$('#vtocSub',ov),body=$('#vtocBody',ov);
+  if(sub)sub.textContent='Mục lục · '+chs.length+' chương · đang đọc chương '+(inf.cur+1);
+  if(!chs.length){body.innerHTML='<div class="vtoc-empty">Truyện này chưa có chương nào.</div>';return}
+  var h='';
+  if(chs.length>=FILTER_FROM)h+='<div class="vtoc-q"><input type="search" id="vtocQ" placeholder="Tìm chương theo tên hoặc số…" autocomplete="off" aria-label="Tìm chương"></div>';
+  h+='<div class="vtoc-list" id="vtocList" style="max-height:'+(chs.length>=FILTER_FROM?'58':'66')+'vh">';
+  chs.forEach(function(t,i){
+    h+='<button type="button" class="vtoc-it'+(i===inf.cur?' cur':'')+'" data-read="'+i+'" data-q="'+esc(plain((i+1)+' '+t))+'"><span class="n">'+(i+1)+'</span><span class="t">'+esc(t)+'</span>'+(i===inf.cur?'<span class="k">đang đọc</span>':'')+'</button>';
+  });
+  h+='<div class="vtoc-empty" id="vtocNone" hidden>Không có chương nào khớp.</div></div>';
+  body.innerHTML=h;
+  var cur=$('.vtoc-it.cur',ov);
+  if(cur){var L=$('#vtocList',ov);L.scrollTop=Math.max(0,L.scrollTop+cur.getBoundingClientRect().top-L.getBoundingClientRect().top-L.clientHeight/2+cur.offsetHeight/2)}
+  var q=$('#vtocQ',ov);
+  if(q)q.addEventListener('input',function(){
+    var v=plain(q.value).trim(),n=0;
+    Array.prototype.forEach.call(ov.querySelectorAll('.vtoc-it'),function(b){var ok=!v||b.getAttribute('data-q').indexOf(v)>-1;b.hidden=!ok;if(ok)n++});
+    var none=$('#vtocNone',ov);if(none)none.hidden=n>0;
+  });
+  else if(cur)cur.focus();
+}
+
+/* ===== SỰ KIỆN ===== */
+document.addEventListener('click',function(e){
+  var t=e.target;if(!t||!t.closest)return;
+  var a=t.closest('[data-vtoc]');
+  if(a){
+    var act=a.getAttribute('data-vtoc');
+    if(act==='open')open();else close();
+    return;
+  }
+  if(ov&&t===ov){close();return}
+  if(ov&&t.closest('.vtoc-it'))setTimeout(close,0);   /* trang chính tự chuyển chương (data-read), mình chỉ đóng hộp */
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&ov){close();return}
+  if((e.key==='Enter'||e.key===' ')&&e.target&&e.target.getAttribute&&e.target.getAttribute('data-vtoc-note')){e.preventDefault();open()}
+});
+window.vcToc={open:open,close:close};
+})();
+</script>
 </body>
 </html>
