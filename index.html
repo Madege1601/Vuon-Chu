@@ -2918,6 +2918,100 @@ document.addEventListener('submit',function(e){
    .catch(function(){i.value=v;note('Gửi không được, bạn thử lại nhé.')});
 },true);
 })();
-  </script>   
+  </script>  
+  <script>
+  /* ===== ADD-ON: VOTE CHƯƠNG TRUYỆN, VOTE ĐƯỢC THƯỞNG CHÌA KHÓA =====
+   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html.
+   BẮT BUỘC đặt SAU add-on chìa khóa (keys-addon), vì tiền thưởng được cộng qua add-on đó.
+   Ở cuối mỗi chương có nút "Vote chương này". Mỗi chương một người vote được một lần.
+   Mỗi lượt vote được thưởng REWARD chìa khóa, nhưng chỉ tính cho MAX_REWARDED lượt vote đầu tiên của mỗi người.
+   Sau khi đủ giới hạn, người đọc vẫn vote được bình thường nhưng không còn nhận thưởng.
+   Dữ liệu vote lưu trên trình duyệt của từng người (giống chìa khóa). */
+(function(){
+'use strict';
+if(window.__vcVote)return;window.__vcVote=1;
+
+/* ===== CẤU HÌNH ===== */
+var REWARD=10;          /* số chìa khóa thưởng cho một lượt vote */
+var MAX_REWARDED=20;    /* mỗi người chỉ nhận thưởng cho tối đa bấy nhiêu lượt vote */
+
+/* ===== TIỆN ÍCH ===== */
+function $(s,r){return (r||document).querySelector(s)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function lsj(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
+function lsw(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+function user(){var u=lsj('vc_user');return u&&u.username?String(u.username):''}
+function load(u){
+  var o=lsj('vcv_'+u)||{};
+  o.v=(o.v&&typeof o.v==='object'&&!Array.isArray(o.v))?o.v:{};
+  o.r=Math.max(0,Math.floor(+o.r)||0);
+  return o;
+}
+function info(){
+  var wrap=$('#view .reader-wrap');if(!wrap)return null;
+  var sb=$('.reader-bar [data-story]',wrap),note=$('.chnav .note',wrap);
+  if(!sb||!note)return null;
+  var m=String(note.textContent).match(/(\d+)\s*\/\s*(\d+)/);if(!m)return null;
+  return {wrap:wrap,id:sb.getAttribute('data-story'),ch:+m[1]-1,title:(sb.textContent||'').replace(/^[←\s]+/,'').trim()};
+}
+
+/* ===== CSS ===== */
+var css=document.createElement('style');
+css.textContent=
+'.vv-box{margin:18px 0 6px;padding:14px 16px;border:1px solid var(--line,#D9E3DD);border-radius:14px;background:var(--surface,#fff);color:var(--ink,#1B2924);text-align:center;font:14px/1.5 var(--f-ui,system-ui,sans-serif)}'+
+'.vv-btn{border:1px solid var(--accent,#1D6B58);background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);font:inherit;font-weight:600;padding:10px 22px;border-radius:999px;cursor:pointer;min-height:44px}'+
+'.vv-btn[disabled]{background:transparent;color:var(--accent,#1D6B58);cursor:default}'+
+'.vv-note{color:var(--muted,#5A6B65);font-size:13px;margin:8px 0 0}'+
+'.vv-got{color:var(--accent,#1D6B58);font-weight:700;margin:8px 0 0}';
+document.head.appendChild(css);
+
+/* ===== HIỂN THỊ ===== */
+var msg='';   /* dòng thông báo sau khi vừa vote */
+function render(){
+  var inf=info();if(!inf)return;
+  var u=user(),old=$('.vv-box',inf.wrap),nav=$('.chnav',inf.wrap);
+  if(!u||!nav){if(old)old.remove();return}
+  var o=load(u),key=inf.id+'#'+inf.ch,voted=!!o.v[key],left=Math.max(0,MAX_REWARDED-o.r);
+  var h='<button type="button" class="vv-btn" data-vv="vote"'+(voted?' disabled aria-pressed="true"':' aria-pressed="false"')+'>'+(voted?'✓ Bạn đã vote chương này':'👍 Vote chương này')+'</button>';
+  if(msg)h+='<div class="vv-got" role="status">'+esc(msg)+'</div>';
+  if(!voted){
+    h+=left>0?'<div class="vv-note">Vote để nhận 🔑 '+REWARD+' chìa khóa. Bạn còn '+left+' lượt vote có thưởng.</div>'
+             :'<div class="vv-note">Bạn đã nhận đủ thưởng vote ('+MAX_REWARDED+' lượt). Vote vẫn được ghi nhận để ủng hộ truyện, nhưng không còn thưởng.</div>';
+  }else if(!msg){
+    h+='<div class="vv-note">Bạn đã vote '+Object.keys(o.v).length+' chương. Thưởng đã nhận: '+Math.min(o.r,MAX_REWARDED)+'/'+MAX_REWARDED+' lượt.</div>';
+  }
+  if(!old){old=document.createElement('div');old.className='vv-box';nav.parentNode.insertBefore(old,nav)}
+  if(old.innerHTML!==h)old.innerHTML=h;
+}
+var queued=false;
+function sched(){if(queued)return;queued=true;Promise.resolve().then(function(){queued=false;render()})}
+var view=document.getElementById('view');
+if(view)new MutationObserver(function(){msg='';sched()}).observe(view,{childList:true});
+render();
+
+/* ===== VOTE ===== */
+function vote(){
+  var inf=info(),u=user();if(!inf||!u)return;
+  var o=load(u),key=inf.id+'#'+inf.ch;
+  if(o.v[key])return;
+  var reward=0;
+  if(o.r<MAX_REWARDED){
+    if(window.vcKeys&&typeof window.vcKeys.add==='function'){
+      if(window.vcKeys.add(REWARD,'Vote: '+inf.title+' · chương '+(inf.ch+1)))reward=REWARD;
+    }
+  }
+  o.v[key]=Date.now();
+  if(reward)o.r+=1;
+  if(!lsw('vcv_'+u,o)){return}
+  msg=reward?'+'+reward+' 🔑 Cảm ơn bạn đã vote!':'Cảm ơn bạn đã vote! (Đã hết lượt nhận thưởng)';
+  render();
+}
+document.addEventListener('click',function(e){
+  var t=e.target;if(!t||!t.closest)return;
+  var b=t.closest('[data-vv="vote"]');if(b)vote();
+});
+window.vcVote={rewarded:function(){var u=user();return u?load(u).r:0},count:function(){var u=user();return u?Object.keys(load(u).v).length:0}};
+})();
+  </script>
 </body>
 </html>
