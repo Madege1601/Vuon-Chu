@@ -2841,5 +2841,83 @@ apply();
 window.vcTheme={get:cur,set:set};
 })();
 </script>    
+  <script>
+    /* ===== ADD-ON: SẢNH TRÒ CHUYỆN DÙNG CHUNG (mọi thiết bị đều thấy tin của nhau) =====
+   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
+   Cần tạo một "Firebase Realtime Database" miễn phí rồi dán địa chỉ của nó vào DB_URL bên dưới (xem hướng dẫn trong tin nhắn).
+   Chưa điền DB_URL thì add-on đứng yên, Sảnh vẫn chạy như cũ (chỉ lưu trên máy). */
+(function(){
+'use strict';
+if(window.__vcChat)return;window.__vcChat=1;
+
+/* ===== CẤU HÌNH ===== */
+var DB_URL='https://vuon-chu-default-rtdb.asia-southeast1.firebasedatabase.app';          /* ví dụ: 'https://ten-du-an-default-rtdb.asia-southeast1.firebasedatabase.app'  (không có dấu / ở cuối) */
+var LIMIT=100;          /* số tin hiện ra */
+var EVERY=3000;         /* cứ bao nhiêu mili giây thì hỏi tin mới (3000 = 3 giây) */
+var MAXLEN=300;
+
+if(!DB_URL)return;
+DB_URL=DB_URL.replace(/\/+$/,'');
+var URL=DB_URL+'/chat.json';
+
+function $(s){return document.querySelector(s)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function me(){try{var u=JSON.parse(localStorage.getItem('vc_user'));return u&&(u.name||u.username)||null}catch(e){return null}}
+function hue(n){var h=0;for(var i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))%360;return h}
+function msgHtml(m){var u=String(m.u||'Khách');return '<div class="msg"><div class="av" style="background:hsl('+(+m.c||hue(u))+' 40% 36%)">'+esc(u.charAt(0).toUpperCase())+'</div><div class="b"><small>'+esc(u)+'</small>'+esc(m.m||'')+'</div></div>'}
+
+var last='',timer=0,busy=false;
+function draw(list){
+  var cl=$('#chatList');if(!cl)return;
+  var sig=list.map(function(x){return x.k}).join(',');
+  if(sig===last)return;last=sig;
+  var atEnd=cl.scrollHeight-cl.scrollTop-cl.clientHeight<80;
+  cl.innerHTML=list.map(msgHtml).join('');
+  if(atEnd||!cl.dataset.vccSeen){cl.scrollTop=cl.scrollHeight;cl.dataset.vccSeen='1'}
+}
+function pull(){
+  if(busy||!$('#chatList'))return;busy=true;
+  fetch(URL+'?orderBy=%22%24key%22&limitToLast='+LIMIT,{cache:'no-store'})
+   .then(function(r){if(!r.ok)throw 0;return r.json()})
+   .then(function(d){
+     var a=[];if(d&&typeof d==='object')Object.keys(d).forEach(function(k){var v=d[k];if(v&&typeof v==='object')a.push({k:k,u:v.u,m:v.m,c:v.c})});
+     a.sort(function(x,y){return x.k<y.k?-1:1});
+     draw(a);note('');
+   })
+   .catch(function(){note('Chưa kết nối được máy chủ trò chuyện. Đang thử lại…')})
+   .then(function(){busy=false});
+}
+function note(t){
+  var p=$('#vccNote');if(!p)return;
+  p.textContent=t||'Tin nhắn ở đây là chung: mọi người, dùng thiết bị nào cũng thấy.';
+}
+function start(){
+  if(!$('#chatList')){if(timer){clearInterval(timer);timer=0}last='';return}
+  /* đổi dòng mô tả cũ */
+  var cl=$('#chatList'),panel=cl.closest('.panel');
+  var old=panel&&panel.previousElementSibling;
+  if(old&&old.tagName==='P'&&!old.id){old.id='vccNote'}
+  note('');
+  cl.innerHTML='';last='';delete cl.dataset.vccSeen;
+  pull();
+  if(!timer)timer=setInterval(function(){if(!document.hidden)pull()},EVERY);
+}
+var view=document.getElementById('view');
+if(view)new MutationObserver(function(){Promise.resolve().then(start)}).observe(view,{childList:true});
+start();
+
+/* ===== GỬI TIN: chặn cách lưu cũ, gửi lên máy chủ ===== */
+document.addEventListener('submit',function(e){
+  var f=e.target;if(!f||f.id!=='chatForm')return;
+  e.preventDefault();e.stopImmediatePropagation();
+  var i=$('#chatIn'),v=(i.value||'').trim().slice(0,MAXLEN);if(!v)return;
+  var name=me()||'Khách';
+  i.value='';
+  fetch(URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({u:name,m:v,c:hue(name),t:Date.now()})})
+   .then(function(r){if(!r.ok)throw 0;pull()})
+   .catch(function(){i.value=v;note('Gửi không được, bạn thử lại nhé.')});
+},true);
+})();
+  </script>   
 </body>
 </html>
