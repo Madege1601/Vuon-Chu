@@ -2851,9 +2851,8 @@ window.vcTheme={get:cur,set:set};
 if(window.__vcChat)return;window.__vcChat=1;
 
 /* ===== CẤU HÌNH ===== */
-var DB_URL='https://vuon-chu-default-rtdb.asia-southeast1.firebasedatabase.app';          /* ví dụ: 'https://ten-du-an-default-rtdb.asia-southeast1.firebasedatabase.app'  (không có dấu / ở cuối) */
-var LIMIT=100;          /* số tin hiện ra */
-var EVERY=3000;         /* cứ bao nhiêu mili giây thì hỏi tin mới (3000 = 3 giây) */
+var DB_URL='https://vuon-chu-default-rtdb.asia-southeast1.firebasedatabase.app';          
+var EVERY=3000;        
 var MAXLEN=300;
 
 if(!DB_URL)return;
@@ -2920,10 +2919,10 @@ document.addEventListener('submit',function(e){
 })();
   </script>  
   <script>
-  /* ===== ADD-ON: VOTE CHƯƠNG TRUYỆN, VOTE ĐƯỢC THƯỞNG CHÌA KHÓA =====
+ /* ===== ADD-ON: VOTE CHƯƠNG TRUYỆN, VOTE ĐƯỢC THƯỞNG CHÌA KHÓA =====
    Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html.
    BẮT BUỘC đặt SAU add-on chìa khóa (keys-addon), vì tiền thưởng được cộng qua add-on đó.
-   Ở cuối mỗi chương có nút "Vote chương này". Mỗi chương một người vote được một lần.
+   Ở đầu mỗi chương (ngay trên nội dung) có nút "Vote chương này". Mỗi chương một người vote được một lần.
    Mỗi lượt vote được thưởng REWARD chìa khóa, nhưng chỉ tính cho MAX_REWARDED lượt vote đầu tiên của mỗi người.
    Sau khi đủ giới hạn, người đọc vẫn vote được bình thường nhưng không còn nhận thưởng.
    Dữ liệu vote lưu trên trình duyệt của từng người (giống chìa khóa). */
@@ -2934,6 +2933,7 @@ if(window.__vcVote)return;window.__vcVote=1;
 /* ===== CẤU HÌNH ===== */
 var REWARD=10;          /* số chìa khóa thưởng cho một lượt vote */
 var MAX_REWARDED=20;    /* mỗi người chỉ nhận thưởng cho tối đa bấy nhiêu lượt vote */
+var SHOW_NOTE=false;    /* true: hiện các dòng chú thích nhỏ dưới nút vote ("Vote để nhận 🔑 10 chìa khóa…"). false: ẩn đi */
 
 /* ===== TIỆN ÍCH ===== */
 function $(s,r){return (r||document).querySelector(s)}
@@ -2958,7 +2958,7 @@ function info(){
 /* ===== CSS ===== */
 var css=document.createElement('style');
 css.textContent=
-'.vv-box{margin:18px 0 6px;padding:14px 16px;border:1px solid var(--line,#D9E3DD);border-radius:14px;background:var(--surface,#fff);color:var(--ink,#1B2924);text-align:center;font:14px/1.5 var(--f-ui,system-ui,sans-serif)}'+
+'.vv-box{margin:0 0 12px;padding:12px 16px;border:1px solid var(--line,#D9E3DD);border-radius:14px;background:var(--surface,#fff);color:var(--ink,#1B2924);text-align:center;font:14px/1.5 var(--f-ui,system-ui,sans-serif)}'+
 '.vv-btn{border:1px solid var(--accent,#1D6B58);background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);font:inherit;font-weight:600;padding:10px 22px;border-radius:999px;cursor:pointer;min-height:44px}'+
 '.vv-btn[disabled]{background:transparent;color:var(--accent,#1D6B58);cursor:default}'+
 '.vv-note{color:var(--muted,#5A6B65);font-size:13px;margin:8px 0 0}'+
@@ -2969,18 +2969,19 @@ document.head.appendChild(css);
 var msg='';   /* dòng thông báo sau khi vừa vote */
 function render(){
   var inf=info();if(!inf)return;
-  var u=user(),old=$('.vv-box',inf.wrap),nav=$('.chnav',inf.wrap);
-  if(!u||!nav){if(old)old.remove();return}
+  var u=user(),old=$('.vv-box',inf.wrap),art=$('.reader',inf.wrap);
+  if(!u||!art){if(old)old.remove();return}
   var o=load(u),key=inf.id+'#'+inf.ch,voted=!!o.v[key],left=Math.max(0,MAX_REWARDED-o.r);
   var h='<button type="button" class="vv-btn" data-vv="vote"'+(voted?' disabled aria-pressed="true"':' aria-pressed="false"')+'>'+(voted?'✓ Bạn đã vote chương này':'👍 Vote chương này')+'</button>';
   if(msg)h+='<div class="vv-got" role="status">'+esc(msg)+'</div>';
-  if(!voted){
+  if(!SHOW_NOTE){}
+  else if(!voted){
     h+=left>0?'<div class="vv-note">Vote để nhận 🔑 '+REWARD+' chìa khóa. Bạn còn '+left+' lượt vote có thưởng.</div>'
              :'<div class="vv-note">Bạn đã nhận đủ thưởng vote ('+MAX_REWARDED+' lượt). Vote vẫn được ghi nhận để ủng hộ truyện, nhưng không còn thưởng.</div>';
   }else if(!msg){
     h+='<div class="vv-note">Bạn đã vote '+Object.keys(o.v).length+' chương. Thưởng đã nhận: '+Math.min(o.r,MAX_REWARDED)+'/'+MAX_REWARDED+' lượt.</div>';
   }
-  if(!old){old=document.createElement('div');old.className='vv-box';nav.parentNode.insertBefore(old,nav)}
+  if(!old){old=document.createElement('div');old.className='vv-box';var tn=$('.vnt',inf.wrap);if(tn)tn.parentNode.insertBefore(old,tn.nextSibling);else art.parentNode.insertBefore(old,art)}
   if(old.innerHTML!==h)old.innerHTML=h;
 }
 var queued=false;
