@@ -3150,5 +3150,316 @@ document.addEventListener('click',function(e){
 window.vcVote={rewarded:function(){var u=user();return u?load(u).r:0},count:function(){var u=user();return u?Object.keys(load(u).v).length:0}};
 })();
   </script>
+  <script>
+/* ===== ADD-ON: QUẢN LÝ MÃ ĐỔI THƯỞNG DÀNH CHO QUẢN TRỊ VIÊN =====
+   Tự động tổng hợp mã code đổi quà của độc giả để Admin duyệt & trao thưởng.
+   Chỉ hiển thị cho tài khoản Admin.
+*/
+(function(){
+  'use strict';
+  if (window.__vcAdminRedeem) return;
+  window.__vcAdminRedeem = 1;
+
+  // Kiểm tra quyền Admin
+  function isAdmin() {
+    try {
+      return !!(window.vcRole && window.vcRole.get() === 'admin');
+    } catch(e) { return false; }
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, function(c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function formatDate(t) {
+    if (!t) return 'Chưa rõ';
+    var d = new Date(t);
+    return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+  }
+
+  // Quét toàn bộ lịch sử mua hàng của độc giả trong localStorage
+  function getAllPurchases() {
+    var purchases = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf('vck_') === 0 && key !== 'vck_admin_claims') {
+        var username = key.replace('vck_', '');
+        try {
+          var data = JSON.parse(localStorage.getItem(key));
+          if (data && Array.isArray(data.buy)) {
+            data.buy.forEach(function(item) {
+              purchases.push({
+                username: username,
+                itemId: item.id || '',
+                itemName: item.n || item.name || item.id || 'Quà sự kiện',
+                price: item.p || item.price || 0,
+                time: item.t || item.time || 0,
+                code: item.c || item.code || 'CHƯA-CÓ-MÃ',
+                done: !!item.done
+              });
+            });
+          }
+        } catch(e) {}
+      }
+    }
+    // Sắp xếp đơn mới nhất lên đầu
+    purchases.sort(function(a, b) { return b.time - a.time; });
+    return purchases;
+  }
+
+  // Cập nhật trạng thái đã trao / chưa trao
+  function toggleStatus(username, code) {
+    var key = 'vck_' + username;
+    try {
+      var data = JSON.parse(localStorage.getItem(key));
+      if (data && Array.isArray(data.buy)) {
+        var updated = false;
+        data.buy.forEach(function(item) {
+          if ((item.c || item.code) === code) {
+            item.done = !item.done;
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem(key, JSON.stringify(data));
+          return true;
+        }
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  // Thêm CSS giao diện Admin Panel
+  var css = document.createElement('style');
+  css.textContent = `
+    .vc-admin-btn {
+      position: fixed;
+      left: max(12px, env(safe-area-inset-left, 0px));
+      bottom: max(64px, env(safe-area-inset-bottom, 0px));
+      z-index: 99982;
+      padding: 8px 14px;
+      border-radius: 99px;
+      border: 1px solid #facc15;
+      background: rgba(18, 24, 20, 0.92);
+      color: #facc15;
+      font: 600 13px/1.2 var(--f-ui, system-ui, sans-serif);
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(8px);
+    }
+    .vc-admin-btn:hover { background: #facc15; color: #000; }
+    
+    .vc-admin-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100005;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+    }
+    .vc-admin-modal[hidden] { display: none !important; }
+    
+    .vc-admin-sheet {
+      background: var(--surface, #18221E);
+      color: var(--ink, #E6EFEA);
+      border: 1px solid var(--line, #2A3832);
+      border-radius: 18px;
+      width: min(680px, 100%);
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+      font-family: var(--f-ui, system-ui, sans-serif);
+    }
+    
+    .vc-admin-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line, #2A3832);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .vc-admin-header h3 { margin: 0; font-size: 18px; color: #facc15; display: flex; align-items: center; gap: 8px; }
+    .vc-admin-close { background: none; border: none; color: var(--muted, #93A59D); font-size: 24px; cursor: pointer; line-height: 1; }
+    .vc-admin-close:hover { color: #fff; }
+
+    .vc-admin-body { padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+    .vc-admin-search {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line, #2A3832);
+      background: var(--bg, #0F1613);
+      color: var(--ink, #E6EFEA);
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    
+    .vc-admin-list { display: flex; flex-direction: column; gap: 10px; }
+    .vc-admin-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--line, #2A3832);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .vc-admin-card.done { opacity: 0.65; border-color: rgba(74, 222, 128, 0.3); }
+    .vc-admin-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
+    .vc-admin-user { font-weight: 700; color: #38bdf8; font-size: 14px; }
+    .vc-admin-item { font-size: 13.5px; font-weight: 600; color: var(--ink, #E6EFEA); }
+    .vc-admin-code {
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: bold;
+      color: #facc15;
+      background: rgba(250, 204, 21, 0.1);
+      padding: 2px 8px;
+      border-radius: 6px;
+      width: fit-content;
+      border: 1px dashed rgba(250, 204, 21, 0.4);
+    }
+    .vc-admin-meta { font-size: 11.5px; color: var(--muted, #93A59D); }
+
+    .vc-admin-act-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-status-pending { background: #f59e0b; color: #000; }
+    .btn-status-pending:hover { background: #d97706; color: #fff; }
+    .btn-status-done { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid #4ade80; }
+    .btn-status-done:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+  `;
+  document.head.appendChild(css);
+
+  // Khung Modal Admin
+  var modal = document.createElement('div');
+  modal.className = 'vc-admin-modal';
+  modal.hidden = true;
+  modal.innerHTML = `
+    <div class="vc-admin-sheet" role="dialog" aria-modal="true">
+      <div class="vc-admin-header">
+        <h3>👑 Quản Lý Mã Đổi Thưởng</h3>
+        <button class="vc-admin-close" id="closeVcAdminModal">&times;</button>
+      </div>
+      <div class="vc-admin-body">
+        <input type="search" class="vc-admin-search" id="vcAdminSearchInp" placeholder="🔍 Tìm theo Tên độc giả hoặc Mã Code (VD: VC-ABC123)...">
+        <div class="vc-admin-list" id="vcAdminList"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Nút Nổi Kích Hoạt
+  var floatBtn = document.createElement('button');
+  floatBtn.className = 'vc-admin-btn';
+  floatBtn.style.display = 'none';
+  floatBtn.innerHTML = '<span>🎁</span> Mã Đổi Thưởng';
+  document.body.appendChild(floatBtn);
+
+  // Render danh sách mã
+  function renderList(query) {
+    var listEl = document.getElementById('vcAdminList');
+    if (!listEl) return;
+
+    var items = getAllPurchases();
+    var q = (query || '').toLowerCase().trim();
+
+    if (q) {
+      items = items.filter(function(it) {
+        return it.username.toLowerCase().indexOf(q) > -1 || 
+               it.code.toLowerCase().indexOf(q) > -1 ||
+               it.itemName.toLowerCase().indexOf(q) > -1;
+      });
+    }
+
+    if (items.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--muted,#93A59D);">Chưa có đơn mua quà nào từ độc giả.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = items.map(function(it) {
+      var isDone = it.done;
+      return `
+        <div class="vc-admin-card ${isDone ? 'done' : ''}">
+          <div class="vc-admin-info">
+            <div class="vc-admin-user">👤 @${esc(it.username)}</div>
+            <div class="vc-admin-item">📦 ${esc(it.itemName)} (${it.price.toLocaleString()} 🔑)</div>
+            <div class="vc-admin-code">${esc(it.code)}</div>
+            <div class="vc-admin-meta">🕒 Thời gian: ${formatDate(it.time)}</div>
+          </div>
+          <div>
+            <button class="vc-admin-act-btn ${isDone ? 'btn-status-done' : 'btn-status-pending'}" 
+                    data-user="${esc(it.username)}" 
+                    data-code="${esc(it.code)}">
+              ${isDone ? '✅ Đã trao quà (Bấm hủy)' : '⏳ Chưa trao (Bấm xong)'}
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Cập nhật trạng thái hiển thị nút bấm Admin
+  function updateAdminBtnVisibility() {
+    if (isAdmin()) {
+      floatBtn.style.display = 'flex';
+    } else {
+      floatBtn.style.display = 'none';
+      modal.hidden = true;
+    }
+  }
+
+  // Sự kiện nút bấm
+  floatBtn.addEventListener('click', function() {
+    modal.hidden = false;
+    renderList();
+  });
+
+  document.getElementById('closeVcAdminModal').addEventListener('click', function() {
+    modal.hidden = true;
+  });
+
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) modal.hidden = true;
+    
+    // Xử lý khi bấm nút chuyển trạng thái Trao Thưởng
+    var btn = e.target.closest('.vc-admin-act-btn');
+    if (btn) {
+      var user = btn.getAttribute('data-user');
+      var code = btn.getAttribute('data-code');
+      if (user && code) {
+        toggleStatus(user, code);
+        renderList(document.getElementById('vcAdminSearchInp').value);
+      }
+    }
+  });
+
+  document.getElementById('vcAdminSearchInp').addEventListener('input', function(e) {
+    renderList(e.target.value);
+  });
+
+  // Tự động kiểm tra quyền Admin khi có thay đổi trạng thái đăng nhập
+  setInterval(updateAdminBtnVisibility, 2000);
+  updateAdminBtnVisibility();
+
+})();
+</script>
 </body>
 </html>
