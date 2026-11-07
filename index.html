@@ -3461,5 +3461,220 @@ window.vcVote={rewarded:function(){var u=user();return u?load(u).r:0},count:func
 
 })();
 </script>
+  <script>
+    /* ===== ADD-ON: BÌNH LUẬN THEO ĐOẠN VÀ BÌNH LUẬN CUỐI CHƯƠNG (dùng chung mọi thiết bị) =====
+   Bọc nội dung file này trong một cặp thẻ script rồi dán ngay phía trên dòng đóng body của index.html (sau các add-on khác).
+   - Cạnh mỗi đoạn truyện có nút 💬 (kèm số bình luận). Bấm vào để xem và viết bình luận cho riêng đoạn đó.
+   - Dưới cùng chương có khung "Bình luận cuối chương".
+   Bình luận lưu trên Firebase (cùng database với Sảnh Trò Chuyện) nên mọi người đều thấy.
+   BẮT BUỘC thay bộ Rules trong Firebase bằng file firebase-rules.json mới (có thêm mục "comments"), nếu không sẽ không gửi được. */
+(function(){
+'use strict';
+if(window.__vcComments)return;window.__vcComments=1;
+
+/* ===== CẤU HÌNH ===== */
+var DB_URL='https://vuon-chu-default-rtdb.asia-southeast1.firebasedatabase.app';   /* giống DB_URL của Sảnh Trò Chuyện */
+var MAXLEN=500;          /* số ký tự tối đa một bình luận */
+var EVERY=12000;         /* cứ bao nhiêu mili giây thì hỏi bình luận mới (12000 = 12 giây) */
+var GAP=4000;            /* người dùng phải chờ bấy nhiêu mili giây giữa hai lần gửi */
+var SHOW_EMPTY=true;     /* true: đoạn chưa có bình luận vẫn hiện nút 💬 mờ. false: chỉ hiện nút ở đoạn đã có bình luận (người đọc sẽ không thấy chỗ để mở đầu) */
+
+if(!DB_URL)return;
+DB_URL=DB_URL.replace(/\/+$/,'');
+
+/* ===== TIỆN ÍCH ===== */
+function $(s,r){return (r||document).querySelector(s)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function me(){try{var u=JSON.parse(localStorage.getItem('vc_user'));return u&&(u.name||u.username)?String(u.name||u.username).slice(0,40):''}catch(e){return ''}}
+function hue(n){var h=0;for(var i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))%360;return h}
+function key(s){return String(s).replace(/[.$#\[\]\/]/g,'_')}
+function ago(t){
+  var d=Date.now()-(+t||0);if(!t||d<0)return '';
+  if(d<60e3)return 'vừa xong';if(d<3600e3)return Math.floor(d/60e3)+' phút trước';if(d<86400e3)return Math.floor(d/3600e3)+' giờ trước';
+  if(d<7*86400e3)return Math.floor(d/86400e3)+' ngày trước';
+  var x=new Date(+t);return x.getDate()+'/'+(x.getMonth()+1)+'/'+x.getFullYear();
+}
+function info(){
+  var wrap=$('#view .reader-wrap');if(!wrap)return null;
+  var sb=$('.reader-bar [data-story]',wrap),note=$('.chnav .note',wrap),art=$('.reader',wrap);
+  if(!sb||!note||!art)return null;
+  var m=String(note.textContent).match(/(\d+)\s*\/\s*(\d+)/);if(!m)return null;
+  return {wrap:wrap,art:art,sid:sb.getAttribute('data-story'),ch:+m[1]-1};
+}
+
+/* ===== DỮ LIỆU ===== */
+var cache={k:'',data:{},ok:false,err:''};
+var timer=0,busy=false;
+function path(inf){return DB_URL+'/comments/'+encodeURIComponent(key(inf.sid))+'/'+inf.ch}
+function slotList(slot){
+  var o=cache.data&&cache.data[slot],a=[];
+  if(o&&typeof o==='object')Object.keys(o).forEach(function(id){var v=o[id];if(v&&typeof v==='object'&&v.m)a.push({id:id,u:v.u,m:v.m,t:v.t})});
+  a.sort(function(x,y){return (x.t||0)-(y.t||0)||(x.id<y.id?-1:1)});
+  return a;
+}
+function pull(){
+  var inf=info();if(!inf||busy)return;
+  var k=inf.sid+'#'+inf.ch;busy=true;
+  fetch(path(inf)+'.json').then(function(r){if(!r.ok){var e=new Error('HTTP '+r.status);e.code=r.status;throw e}return r.json()})
+   .then(function(d){
+     if(k!==cache.k)return;
+     if(d&&typeof d==='object'&&typeof d.error==='string'){var e=new Error(d.error);e.code=401;throw e}
+     cache.data=(d&&typeof d==='object')?d:{};cache.ok=true;cache.err='';refresh();
+   })
+   .catch(function(e){if(k!==cache.k)return;cache.ok=false;var c=e&&e.code;cache.err=(c===401||c===403)?'Máy chủ từ chối đọc bình luận. Kiểm tra bộ Rules Firebase đã có mục "comments" và đã Publish chưa.':'Chưa kết nối được máy chủ bình luận.';refresh()})
+   .then(function(){busy=false});
+}
+function send(slot,text,done){
+  var inf=info(),u=me();if(!inf||!u)return done('Hãy đăng nhập để bình luận.');
+  text=String(text||'').trim().slice(0,MAXLEN);if(!text)return done('Hãy viết nội dung bình luận.');
+  var now=Date.now();if(send.t&&now-send.t<GAP)return done('Bạn gửi nhanh quá, đợi vài giây nhé.');
+  send.t=now;
+  fetch(path(inf)+'/'+slot+'.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({u:u,m:text,t:now})})
+   .then(function(r){
+     if(!r.ok){var e=new Error('HTTP '+r.status);e.code=r.status;throw e}
+     return r.json();
+   }).then(function(j){
+     var o=cache.data[slot];if(!o||typeof o!=='object'){o=cache.data[slot]={}}
+     o[(j&&j.name)||('l'+now)]={u:u,m:text,t:now};
+     refresh();done('');pull();
+   }).catch(function(e){send.t=0;var c=e&&e.code;done((c===401||c===403)?'Máy chủ từ chối. Hãy cập nhật bộ Rules Firebase (mục "comments") rồi Publish.':'Không gửi được, bạn thử lại nhé.')});
+}
+
+/* ===== CSS ===== */
+var css=document.createElement('style');
+css.textContent=
+'.vcn-row{max-width:62ch;margin:-.55em auto .5em;padding:0 6px;text-align:right;line-height:1;font-family:var(--f-ui,system-ui,sans-serif)}'+
+'.vcn-b{display:inline-flex;align-items:center;gap:4px;border:1px solid transparent;background:none;color:var(--rfg,var(--ink,#1B2924));opacity:.4;font:600 12px/1 var(--f-ui,system-ui,sans-serif);padding:5px 9px;border-radius:999px;cursor:pointer;transition:opacity .2s,background .2s}'+
+'.vcn-b:hover,.vcn-b:focus-visible{opacity:.9;background:rgba(127,127,127,.15)}'+
+'.vcn-b.has{opacity:.85;border-color:rgba(127,127,127,.35)}'+
+'.vcn-ov{position:fixed;inset:0;z-index:100001;background:rgba(8,16,12,.6);display:flex;align-items:flex-end;justify-content:center}'+
+'.vcn-box{background:var(--surface,#fff);color:var(--ink,#1B2924);border:1px solid var(--line,#D9E3DD);border-radius:18px 18px 0 0;width:min(560px,100%);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 -12px 40px rgba(0,0,0,.35);font:14px/1.5 var(--f-ui,system-ui,sans-serif)}'+
+'@media (min-width:640px){.vcn-ov{align-items:center;padding:16px}.vcn-box{border-radius:18px;max-height:82vh}}'+
+'.vcn-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px 6px}.vcn-h b{font-family:var(--f-display,Georgia,serif);font-size:18px;font-weight:600}'+
+'.vcn-x{border:0;background:none;color:inherit;font-size:24px;line-height:1;cursor:pointer;padding:0 4px}'+
+'.vcn-q{margin:0 18px 8px;padding:8px 12px;border-left:3px solid var(--accent,#1D6B58);background:var(--soft,#E5EFEA);border-radius:0 10px 10px 0;color:var(--muted,#5A6B65);font-size:13px;max-height:4.6em;overflow:hidden}'+
+'.vcn-list{overflow:auto;padding:4px 18px;display:grid;gap:8px;align-content:start;-webkit-overflow-scrolling:touch}'+
+'.vcn-it{display:grid;grid-template-columns:32px 1fr;gap:10px}.vcn-av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}'+
+'.vcn-bd{background:var(--soft,#E5EFEA);border-radius:12px;padding:8px 12px;min-width:0}.vcn-bd small{display:flex;gap:8px;color:var(--muted,#5A6B65);font-size:12px;margin-bottom:2px}.vcn-bd small b{color:var(--ink,#1B2924)}.vcn-bd p{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}'+
+'.vcn-empty{color:var(--muted,#5A6B65);text-align:center;padding:14px 0}'+
+'.vcn-err{color:var(--warn,#B23A2B);font-size:13px;min-height:1.2em;padding:0 18px}'+
+'.vcn-form{display:grid;gap:8px;padding:8px 18px 16px}.vcn-form textarea{width:100%;min-height:64px;resize:vertical;padding:9px 12px;border-radius:12px;border:1px solid var(--line,#D9E3DD);background:var(--bg,#fff);color:inherit;font:inherit;box-sizing:border-box}'+
+'.vcn-form .row{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted,#5A6B65);font-size:12px}'+
+'.vcn-go{border:1px solid var(--accent,#1D6B58);background:var(--accent,#1D6B58);color:var(--accent-ink,#fff);font:inherit;font-weight:600;padding:8px 18px;border-radius:999px;cursor:pointer}.vcn-go[disabled]{opacity:.5}'+
+'.vcn-end{max-width:62ch;margin:26px auto 8px;padding:0 6px;font-family:var(--f-ui,system-ui,sans-serif)}.vcn-end>h3{margin:0 0 10px}.vcn-end .vcn-list,.vcn-end .vcn-form,.vcn-end .vcn-err{padding-left:0;padding-right:0}'+
+'.vcn-end,.vcn-end .vcn-bd p{color:var(--ink,#1B2924)}'+
+'.vcn-lock{color:var(--muted,#5A6B65);font-size:13px;padding:6px 0}';
+document.head.appendChild(css);
+
+/* ===== GẮN NÚT VÀO TRANG ĐỌC ===== */
+function paras(art){return Array.prototype.filter.call(art.children,function(n){return n.tagName==='P'})}
+function itemHtml(c){var u=String(c.u||'Khách');return '<div class="vcn-it"><div class="vcn-av" style="background:hsl('+hue(u)+' 40% 36%)">'+esc(u.charAt(0).toUpperCase())+'</div><div class="vcn-bd"><small><b>'+esc(u)+'</b><span>'+esc(ago(c.t))+'</span></small><p>'+esc(c.m)+'</p></div></div>'}
+function formHtml(slot,id){
+  if(!me())return '<div class="vcn-lock">Hãy đăng nhập để viết bình luận.</div>';
+  return '<form class="vcn-form" data-vcnf="'+esc(slot)+'"><textarea maxlength="'+MAXLEN+'" placeholder="Viết bình luận…" aria-label="Bình luận"></textarea><div class="row"><span>Tối đa '+MAXLEN+' ký tự</span><button type="submit" class="vcn-go">Gửi</button></div></form>';
+}
+function inject(){
+  var inf=info();
+  if(!inf){stopPoll();return}
+  var k=inf.sid+'#'+inf.ch;
+  if(cache.k!==k){cache={k:k,data:{},ok:false,err:''};startPoll()}
+  var ps=paras(inf.art);
+  ps.forEach(function(p,i){
+    var nx=p.nextElementSibling;
+    if(!(nx&&nx.classList.contains('vcn-row')&&nx.getAttribute('data-i')===String(i))){
+      if(nx&&nx.classList.contains('vcn-row'))nx.remove();
+      var r=document.createElement('div');r.className='vcn-row';r.setAttribute('data-i',i);
+      r.innerHTML='<button type="button" class="vcn-b" data-vcn="p" data-i="'+i+'" aria-label="Bình luận đoạn '+(i+1)+'">💬<span></span></button>';
+      p.parentNode.insertBefore(r,p.nextSibling);
+    }
+  });
+  var end=$('#vcnEnd',inf.wrap);
+  if(!end){
+    end=document.createElement('section');end.id='vcnEnd';end.className='vcn-end';
+    end.innerHTML='<h3>Bình luận cuối chương <span id="vcnEndN"></span></h3><div class="vcn-err" id="vcnEndErr" role="alert"></div><div class="vcn-list" id="vcnEndList"></div><div id="vcnEndForm"></div>';
+    inf.art.parentNode.insertBefore(end,inf.art.nextSibling);
+    refreshEndForm();
+  }
+  refresh();
+}
+function refreshEndForm(){var f=$('#vcnEndForm');if(f)f.innerHTML=formHtml('end')}
+function refresh(){
+  var inf=info();if(!inf)return;
+  Array.prototype.forEach.call(inf.wrap.querySelectorAll('.vcn-b'),function(b){
+    var n=slotList('p'+b.getAttribute('data-i')).length,s=b.firstElementChild;
+    var tx=n?String(n):'';if(s.textContent!==tx)s.textContent=tx;b.classList.toggle('has',n>0);
+    var dp=(n>0||SHOW_EMPTY)?'':'none';if(b.parentNode.style.display!==dp)b.parentNode.style.display=dp;
+  });
+  var l=$('#vcnEndList',inf.wrap);
+  if(l){
+    var a=slotList('end');
+    l.innerHTML=a.length?a.map(itemHtml).join(''):'<div class="vcn-empty">'+(cache.ok?'Chưa có bình luận nào. Hãy là người đầu tiên.':'Đang tải bình luận…')+'</div>';
+    var n=$('#vcnEndN',inf.wrap);if(n)n.textContent=a.length?'('+a.length+')':'';
+  }
+  var e=$('#vcnEndErr',inf.wrap);if(e&&!e.getAttribute('data-send'))e.textContent=cache.err||'';
+  if(ov&&ovSlot!==null){var ls=$('#vcnOvList',ov);if(ls){var b=slotList(ovSlot),atEnd=ls.scrollHeight-ls.scrollTop-ls.clientHeight<60;ls.innerHTML=b.length?b.map(itemHtml).join(''):'<div class="vcn-empty">'+(cache.ok?'Chưa có bình luận nào cho đoạn này.':'Đang tải bình luận…')+'</div>';if(atEnd)ls.scrollTop=ls.scrollHeight;var oe=$('#vcnOvErr',ov);if(oe&&!oe.getAttribute('data-send'))oe.textContent=cache.err||''}}
+}
+function startPoll(){pull();if(!timer)timer=setInterval(function(){if(!document.hidden)pull()},EVERY)}
+function stopPoll(){if(timer){clearInterval(timer);timer=0}cache.k=''}
+
+/* ===== HỘP BÌNH LUẬN THEO ĐOẠN ===== */
+var ov=null,ovSlot=null,prevOv='';
+function closeOv(){if(!ov)return;ov.remove();ov=null;ovSlot=null;document.body.style.overflow=prevOv}
+function openPara(i){
+  var inf=info();if(!inf)return;
+  var p=paras(inf.art)[i];if(!p)return;
+  closeOv();prevOv=document.body.style.overflow;document.body.style.overflow='hidden';
+  ovSlot='p'+i;
+  var q=(p.textContent||'').trim();if(q.length>140)q=q.slice(0,140)+'…';
+  ov=document.createElement('div');ov.className='vcn-ov';
+  ov.innerHTML='<div class="vcn-box" role="dialog" aria-modal="true" aria-label="Bình luận đoạn '+(i+1)+'"><div class="vcn-h"><b>Bình luận đoạn '+(i+1)+'</b><button type="button" class="vcn-x" data-vcn="close" aria-label="Đóng">×</button></div><div class="vcn-q">'+esc(q)+'</div><div class="vcn-list" id="vcnOvList"></div><div class="vcn-err" id="vcnOvErr" role="alert"></div>'+formHtml(ovSlot)+'</div>';
+  document.body.appendChild(ov);
+  refresh();
+  var ls=$('#vcnOvList',ov);if(ls)ls.scrollTop=ls.scrollHeight;
+  var t=$('textarea',ov);if(t)t.focus();
+}
+
+/* ===== SỰ KIỆN ===== */
+document.addEventListener('click',function(e){
+  var t=e.target;if(!t||!t.closest)return;
+  if(ov&&t===ov){closeOv();return}
+  var b=t.closest('[data-vcn]');if(!b)return;
+  var a=b.getAttribute('data-vcn');
+  if(a==='p')openPara(+b.getAttribute('data-i'));
+  else if(a==='close')closeOv();
+});
+document.addEventListener('submit',function(e){
+  var f=e.target;if(!f||!f.getAttribute||f.getAttribute('data-vcnf')===null)return;
+  e.preventDefault();e.stopPropagation();
+  var slot=f.getAttribute('data-vcnf'),ta=$('textarea',f),btn=$('.vcn-go',f);
+  var er=(slot==='end')?$('#vcnEndErr'):$('#vcnOvErr',ov);
+  if(btn)btn.disabled=true;
+  send(slot,ta.value,function(msg){
+    if(btn)btn.disabled=false;
+    if(er){er.textContent=msg;if(msg)er.setAttribute('data-send','1');else er.removeAttribute('data-send')}
+    if(!msg)ta.value='';
+  });
+},true);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&ov)closeOv()});
+
+var queued=false;
+function sched(){if(queued)return;queued=true;Promise.resolve().then(function(){queued=false;inject()})}
+var view=document.getElementById('view');
+function mine(n){var el=n.nodeType===1?n:n.parentElement;return !!(el&&el.closest&&el.closest('.vcn-row,#vcnEnd,.vcn-ov'))}
+if(view)new MutationObserver(function(muts){
+  /* bỏ qua các thay đổi do chính add-on này gây ra, tránh lặp vô tận */
+  for(var i=0;i<muts.length;i++){
+    var m=muts[i];if(mine(m.target))continue;
+    var other=false;
+    Array.prototype.forEach.call(m.addedNodes,function(n){if(!mine(n))other=true});
+    Array.prototype.forEach.call(m.removedNodes,function(n){if(!(n.nodeType===1&&(n.classList.contains('vcn-row')||n.id==='vcnEnd')))other=true});
+    if(other){sched();return}
+  }
+}).observe(view,{childList:true,subtree:true});
+setInterval(function(){var f=$('#vcnEndForm');if(f&&!!f.querySelector('form')!==!!me())refreshEndForm()},2000);
+inject();
+window.vcComments={open:openPara,refresh:pull};
+})();
+</script>
 </body>
 </html>
